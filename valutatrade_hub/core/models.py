@@ -102,3 +102,30 @@ class Wallet:
         print(f'''
             Currency code: {self.currency_code}
             Balance: {self._balance}''')
+
+
+class Portfolio:
+    def __init__(self, user_id:int, wallets: dict[str, Wallet]):
+        self._user_id = user_id
+        self._wallets = wallets
+
+    @property
+    def user(self):
+        # TODO: откуда его возвращать, пока по шагам мы никакого хранилища не сделали
+        return User(self._user_id)
+
+    @property
+    def wallets(self):
+        return self._wallets.copy()
+
+    def add_currency(self, currency_code: str):
+        if currency_code in self._wallets:
+            return
+        self._wallets[currency_code] = Wallet(currency_code, 0)
+
+    def get_total_value(self, base_currency='USD'):
+        # TODO: пока мы не дошли по шагам до того, чтобы откуда то брать курсы валют
+        pass
+
+    def get_wallet(self, currency_code):
+        pass
