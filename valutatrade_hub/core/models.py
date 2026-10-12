@@ -1,8 +1,11 @@
 import hashlib
 import random
 
+from datetime import datetime
+
+
 class User:
-    def __init__(self, id, username, hashed_password, salt, registration_date):
+    def __init__(self, id:int, username:str, hashed_password:str, salt:str, registration_date: datetime):
         self._user_id = id
         self._username = username
         self._hashed_password = hashed_password
@@ -53,3 +56,49 @@ class User:
         pass
 
     # TODO: Для каждого атрибута реализовать геттер и, где необходимо, сеттер с проверками: Имя не может быть пусты и Пароль должен быть не короче 4 символов.
+
+
+class Wallet:
+    def __init__(self, currency_code: str, balance: float):
+        self.currency_code = currency_code
+        self._balance = balance
+
+    @property
+    def balance(self):
+        return self._balance
+    
+    @balance.setter
+    def balance(self, value):
+        if not isinstance(value, [int, float]):
+            raise ValueError('Некорректный тип данных')
+        if value < 0:
+            raise ValueError('Баланс не может быть отрицательным')
+        self._balance = value
+
+    def deposit(self, amount: float):
+        '''
+        пополнение баланс
+        '''
+        if amount < 0:
+            raise ValueError('Размер пополнения не может быть отрицательным')
+        new_balance = self.balance + amount
+        self.balance = new_balance
+    
+    def withdraw(self, amount: float):
+        '''
+        снятие средств (если баланс позволяет)
+        '''
+        if amount < 0:
+            raise ValueError('Размер списания не может быть отрицательным')
+        if amount > self.balance:
+            raise ValueError('Сумма снятия не может превышать размер баланса')
+        new_balance = self._balance - amount
+        self.balance = new_balance
+
+    def get_balance_info(self):
+        '''
+        вывод информации о текущем балансе
+        '''
+        print(f'''
+            Currency code: {self.currency_code}
+            Balance: {self._balance}''')
