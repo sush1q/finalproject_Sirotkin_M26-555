@@ -26,7 +26,19 @@ def register(username:str, password:str):
     return new_user
 
 def login(username:str, password:str):
-    raise NotImplementedError
+    '''
+    Найти пользователя по username.
+    Сравнить хеш пароля.
+    '''
+    # TODO: пока не реализовали чтение
+    if username not in []:
+        raise ValueError(f'Пользователь \'{username}\' не найден')
+
+    # TODO: загрузить инфу о пользователе
+    target_user = models.User('', '', '', '', '')
+    target_user.verify_password(password)
+    return target_user
+    
 
 def show_portfolio(base:str = 'USD'):
     raise NotImplementedError

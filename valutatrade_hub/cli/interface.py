@@ -17,7 +17,16 @@ def register(args:list[str]):
     
 
 def login(args:list[str]):
-    raise NotImplementedError
+    username_idx = args.index('--username')
+    password_idx = args.index('--password')
+
+    if len(args) > 4:
+        raise ValueError('Переданы лишние аргументы')
+    if username_idx not in [0,2] or password_idx not in [0,2]:
+        raise ValueError('Ошибка расположения аргументов')
+
+    user = usecases.login(args[username_idx+1], args[password_idx+1])
+    print(f'Вы вошли как \'{user.username}\'')
 
 def show_portfolio(args:list[str]):
     raise NotImplementedError
