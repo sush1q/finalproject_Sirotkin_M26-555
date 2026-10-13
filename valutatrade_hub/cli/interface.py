@@ -1,6 +1,35 @@
 import prompt
 import shlex
 
+from ..core import usecases
+
+def register(args:list[str]):
+    username_idx = args.index('--username')
+    password_idx = args.index('--password')
+
+    if len(args) > 4:
+        raise ValueError('Переданы лишние аргументы')
+    if username_idx not in [0,2] or password_idx not in [0,2]:
+        raise ValueError('Ошибка расположения аргументов')
+    
+    usecases.register(args[username_idx+1], args[password_idx+1])
+    
+    raise NotImplementedError
+
+def login(args:list[str]):
+    raise NotImplementedError
+
+def show_portfolio(args:list[str]):
+    raise NotImplementedError
+
+def buy(args:list[str]):
+    raise NotImplementedError
+
+def sell(args:list[str]):
+    raise NotImplementedError
+
+def get_rate(args:list[str]):
+    raise NotImplementedError
 
 def execute_command(cmd: str):
     print(cmd)
@@ -10,17 +39,17 @@ def execute_command(cmd: str):
     
     match args[0]:
         case 'register':
-            pass
+            register(args[1:])
         case 'login':
-            pass
+            login(args[1:])
         case 'show-portfolio':
-            pass
+            show_portfolio(args[1:])
         case 'buy':
-            pass
+            buy(args[1:])
         case 'sell':
-            pass
+            sell(args[1:])
         case 'get-rate':
-            pass
+            get_rate(args[1:])
         case _:
             print(f'Функции {args[0]} нет')
 
