@@ -46,8 +46,8 @@ class User:
         '''
         if (len(new_password) < 4):
             raise ValueError('Пароль должен быть не короче 4 символов')
-        self._salt = "abc" # TODO: Генерировать
-        self._hashed_password = hashlib.sha256(new_password + self._salt)
+        self._salt = 'abc' # TODO: Генерировать
+        self._hashed_password = hashlib.sha256((new_password + self._salt).encode(encoding='utf-8'))
     
     def verify_password(self, password: str):
         '''

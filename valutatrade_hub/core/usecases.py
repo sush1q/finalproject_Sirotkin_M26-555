@@ -14,16 +14,16 @@ def register(username:str, password:str):
     
     # TODO: пока не реализовали чтение
     if username in []:
-        raise ValueError(f"Имя пользователя '{username}' уже занято")
+        raise ValueError(f'Имя пользователя \'{username}\' уже занято')
     
     # TODO: пока не читаем users
-    new_id = max(0) + 1
+    new_id = max([0],default=0) + 1
     new_user = models.User(new_id, username, '', '', datetime.now())
     new_user.change_password(password)
     
     # TODO: пока не работаем с файлами
 
-    return (True, f"Пользователь '{username}' зарегистрирован (id={new_id}).")
+    return new_user
 
 def login(username:str, password:str):
     raise NotImplementedError

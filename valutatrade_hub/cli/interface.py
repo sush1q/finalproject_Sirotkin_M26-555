@@ -12,9 +12,9 @@ def register(args:list[str]):
     if username_idx not in [0,2] or password_idx not in [0,2]:
         raise ValueError('Ошибка расположения аргументов')
     
-    usecases.register(args[username_idx+1], args[password_idx+1])
+    new_user = usecases.register(args[username_idx+1], args[password_idx+1])
+    print(f'Пользователь \'{new_user.username}\' зарегистрирован (id={new_user.id}). Войдите: login --username {new_user.username} --password **** ')
     
-    raise NotImplementedError
 
 def login(args:list[str]):
     raise NotImplementedError
@@ -56,7 +56,7 @@ def execute_command(cmd: str):
 def main():
     while True:
         try:
-            user_input = prompt.string("> ")
+            user_input = prompt.string('> ')
             if execute_command(user_input):
                 return 0
         except (EOFError, KeyboardInterrupt):
