@@ -41,6 +41,23 @@ def login(username:str, password:str):
     
 
 def show_portfolio(base:str = 'USD'):
+    '''
+    Убедиться, что пользователь залогинен.
+    Загрузить портфель пользователя.
+    Если кошельков нет — сообщить об этом.
+    Для каждого кошелька: показать currency_code, баланс и посчитать стоимость в base по текущим курсам;
+    Показать сумму по всем кошелькам в base.
+    '''
+    # TODO: не реализовано хранение залогиненых пользователей
+    # if 
+    #     raise ValueError('Сначала выполните login')
+    
+    # TODO: не реализовано хранилище кошельков
+    # if not in :
+    #     return models.Portfolio()
+    
+    # TODO: не реализовано хранилище и получение курсов
+    
     raise NotImplementedError
 
 def buy(currency:str, amount:float):

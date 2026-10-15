@@ -29,6 +29,23 @@ def login(args:list[str]):
     print(f'Вы вошли как \'{user.username}\'')
 
 def show_portfolio(args:list[str]):
+    len_args = len(args)
+    base_arg = '--base'
+    portfolio = None
+
+    if len_args == 0:
+        portfolio = usecases.show_portfolio()
+    elif len_args == 2 and args[0] == base_arg:
+        portfolio = usecases.show_portfolio(args[1])
+    else:
+        raise ValueError('Ошибка указания аргументов')
+
+    # Портфель пользователя 'alice' (база: USD):
+    # - USD: 150.00  → 150.00 USD
+    # - BTC: 0.0500  → 2965.00 USD
+    # - EUR: 200.00  → 214.00 USD
+    # ---------------------------------
+    # ИТОГО: 3,329.00 USD 
     raise NotImplementedError
 
 def buy(args:list[str]):
