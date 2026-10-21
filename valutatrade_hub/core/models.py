@@ -46,22 +46,26 @@ class User:
         '''
         if (len(new_password) < 4):
             raise ValueError('Пароль должен быть не короче 4 символов')
-        self._salt = 'abc' # TODO: Генерировать
+        self._salt = str(random())
         self._hashed_password = hashlib.sha256((new_password + self._salt).encode(encoding='utf-8'))
     
     def verify_password(self, password: str):
         '''
         проверяет введённый пароль на совпадение
         '''
-        pass
+        return hashlib.sha256((password + self._salt).encode(encoding='utf-8')) == self._hashed_password
 
     # TODO: Для каждого атрибута реализовать геттер и, где необходимо, сеттер с проверками: Имя не может быть пусты и Пароль должен быть не короче 4 символов.
 
 
 class Wallet:
     def __init__(self, currency_code: str, balance: float):
+        if balance < 0:
+            raise ValueError('Баланс не может быть отрицательным')
+
         self.currency_code = currency_code
         self._balance = balance
+        
 
     @property
     def balance(self):
@@ -105,7 +109,7 @@ class Wallet:
 
 
 class Portfolio:
-    def __init__(self, user_id:int, wallets: dict[str, Wallet]):
+    def __init__(self, user_id:int, wallets: dict[str, Wallet], user:User=None):
         self._user_id = user_id
         self._wallets = wallets
 
@@ -123,9 +127,29 @@ class Portfolio:
             return
         self._wallets[currency_code] = Wallet(currency_code, 0)
 
-    def get_total_value(self, base_currency='USD'):
+    def get_total_value(self, base_currency='USD', rates=None):
+        if rates is None:
+            rates = {
+                "EUR_USD": {
+                    "rate": 1.0786,                  # 1 евро = 1.0786 доллара
+                    "updated_at": "2025-10-09T10:30:00"
+                },
+                "BTC_USD": {
+                    "rate": 59337.21,                # 1 биткоин = 59337.21 долларов
+                    "updated_at": "2025-10-09T10:29:42"
+                },
+                "RUB_USD": {
+                    "rate": 0.01016,                 # 1 рубль = 0.01016 доллара
+                    "updated_at": "2025-10-09T10:31:12"
+                },
+                "ETH_USD": {
+                    "rate": 3720.00,                 # 1 эфириум = 3720 долларов
+                    "updated_at": "2025-10-09T10:35:00"
+                }
+            }
+        
         # TODO: пока мы не дошли по шагам до того, чтобы откуда то брать курсы валют
-        pass
+        raise NotImplementedError
 
     def get_wallet(self, currency_code):
-        pass
+        return self._wallets[currency_code].copy()

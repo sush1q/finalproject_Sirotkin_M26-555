@@ -49,6 +49,22 @@ def show_portfolio(args:list[str]):
     raise NotImplementedError
 
 def buy(args:list[str]):
+    currency_idx = args.index('--currency')
+    amount_idx = args.index('--amount')
+
+    if len(args) > 4:
+        raise ValueError('Переданы лишние аргументы')
+    if currency_idx not in [0,2] or amount_idx not in [0,2]:
+        raise ValueError('Ошибка расположения аргументов')
+    
+    amount_val = None
+    try:
+        amount_val = float(args[amount_idx]+1)
+    except:
+        raise ValueError('Переданое значение не относится к требуемому типу')
+    
+    buy = usecases.buy(args[currency_idx+1], amount_val)
+    
     raise NotImplementedError
 
 def sell(args:list[str]):

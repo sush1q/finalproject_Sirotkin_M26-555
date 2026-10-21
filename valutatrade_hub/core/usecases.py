@@ -61,6 +61,17 @@ def show_portfolio(base:str = 'USD'):
     raise NotImplementedError
 
 def buy(currency:str, amount:float):
+    '''
+    Проверить логин.
+    Валидировать currency (формат) и amount > 0.
+    Если в портфеле нет такого кошелька — автоматически создать (как делает add_currency).
+    Увеличить баланс кошелька на amount.
+    Опционально (по желанию) вести «расчётную стоимость» покупки для отчёта:
+    Получить текущий курс currency → base.
+    Посчитать стоимость amount * rate и вывести в итог.
+    '''
+    
+    
     raise NotImplementedError
 
 def sell(currency:str, amount:float):
