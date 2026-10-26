@@ -1,6 +1,29 @@
+import json
+import pathlib
 from datetime import datetime
 from . import models
 
+
+DATA_DIR = 'data'
+
+def load_metadata(filepath):
+    """Загружает JSON-файл или возвращает пустой словарь, если файла нет."""
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            return json.loads(file.read())
+    except FileNotFoundError:
+        return {}
+
+def save_metadata(filepath, data):
+    """Сохраняет переданные данные в JSON-файл."""
+    with open(filepath, "w", encoding="utf-8") as file:
+        file.write(json.dumps(data))
+
+def read_data(type:str):
+    return load_metadata(pathlib.Path(DATA_DIR+f'{type}.json'))
+
+def save_data(type:str, data:dict):
+    save_metadata(pathlib.Path(DATA_DIR+f'{type}.json'), data)
 
 def register(username:str, password:str):
     '''
@@ -11,19 +34,17 @@ def register(username:str, password:str):
     Создать пустой портфель (portfolios.json: user_id + пустой словарь кошельков).
     Вернуть сообщение об успехе.
     '''
-    
+    users = utils.read_data('users')
     # TODO: пока не реализовали чтение
-    if username in []:
+    if any(record.get('username') == username for record in users):
         raise ValueError(f'Имя пользователя \'{username}\' уже занято')
     
-    # TODO: пока не читаем users
-    new_id = max([0],default=0) + 1
-    new_user = models.User(new_id, username, '', '', datetime.now())
-    new_user.change_password(password)
-    
-    # TODO: пока не работаем с файлами
+    loaded_users = [models.User.from_dict(record) for record in users]
+    portfolios = utils.read_data('portfolios')
+    new_id = max((user.id for user in loaded_users), default=0) + 1
+    user = models.User(new_id, username, '', '', datetime.now(timezone.utc))
+    user.change_password(password)
 
-    return new_user
 
 def login(username:str, password:str):
     '''

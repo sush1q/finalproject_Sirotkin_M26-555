@@ -1,106 +1,142 @@
 import prompt
 import shlex
+from prettytable import PrettyTable
 
-from ..core import usecases
+from ..core import usecases, models, utils
 
-def register(args:list[str]):
-    username_idx = args.index('--username')
-    password_idx = args.index('--password')
 
-    if len(args) > 4:
-        raise ValueError('Переданы лишние аргументы')
-    if username_idx not in [0,2] or password_idx not in [0,2]:
-        raise ValueError('Ошибка расположения аргументов')
+def _parse_options(args:list, options:dict):
+    if len(args) % 2:
+        raise ValueError('Для каждого аргумента нужно указать значение')
+    result = {}
+    for index in range(0, len(args), 2):
+        flag, value = args[index : index + 2]
+        if flag not in options:
+            raise ValueError(f'Неизвестный аргумент \'{flag}\'')
+        if flag in result:
+            raise ValueError(f'Аргумент \'{flag}\' указан повторно')
+        result[flag] = value
+    missing = [flag for flag, value in options.items() if value is None and flag not in result]
+    if missing:
+        raise ValueError('Не указаны обязательные аргументы: ' + ', '.join(missing))
+    return options | result
+
+def register(args:list):
+    username = '--username'
+    password = '--password'
+    options = {username: None, password: None}
     
-    new_user = usecases.register(args[username_idx+1], args[password_idx+1])
-    print(f'Пользователь \'{new_user.username}\' зарегистрирован (id={new_user.id}). Войдите: login --username {new_user.username} --password **** ')
-    
+    options = _parse_options(args, options)
+    user = usecases.register(options[username], options[password])
+    print(
+        f'Пользователь \'{user.username}\' зарегистрирован (id={user.id}). '
+        f'Войдите: login --username {user.username} --password ****'
+    )
 
-def login(args:list[str]):
-    username_idx = args.index('--username')
-    password_idx = args.index('--password')
-
-    if len(args) > 4:
-        raise ValueError('Переданы лишние аргументы')
-    if username_idx not in [0,2] or password_idx not in [0,2]:
-        raise ValueError('Ошибка расположения аргументов')
-
-    user = usecases.login(args[username_idx+1], args[password_idx+1])
+def login(args:list):
+    username = '--username'
+    password = '--password'
+    options = _parse_options(args, {username: None, password: None})
+    user = usecases.login(options[username], options[password])
     print(f'Вы вошли как \'{user.username}\'')
+    return user
 
-def show_portfolio(args:list[str]):
-    len_args = len(args)
-    base_arg = '--base'
-    portfolio = None
-
-    if len_args == 0:
-        portfolio = usecases.show_portfolio()
-    elif len_args == 2 and args[0] == base_arg:
-        portfolio = usecases.show_portfolio(args[1])
-    else:
-        raise ValueError('Ошибка указания аргументов')
-
-    # Портфель пользователя 'alice' (база: USD):
-    # - USD: 150.00  → 150.00 USD
-    # - BTC: 0.0500  → 2965.00 USD
-    # - EUR: 200.00  → 214.00 USD
-    # ---------------------------------
-    # ИТОГО: 3,329.00 USD 
-    raise NotImplementedError
-
-def buy(args:list[str]):
-    currency_idx = args.index('--currency')
-    amount_idx = args.index('--amount')
-
-    if len(args) > 4:
-        raise ValueError('Переданы лишние аргументы')
-    if currency_idx not in [0,2] or amount_idx not in [0,2]:
-        raise ValueError('Ошибка расположения аргументов')
+def show_portfolio(args:list, user_id:int):
+    base_opt = '--base'
+    options = _parse_options(args, {base_opt: 'USD'})
+    result = usecases.show_portfolio(user_id, options[base_opt])
     
-    amount_val = None
+    base = result['base']
+    print(f'Портфель пользователя \'{result['username']}\' (база: {base}):')
+    if not result['wallets']:
+        print('Портфель пуст. Кошельки создаются при первой покупке валюты.')
+        return
+    table = PrettyTable(['Валюта', 'Баланс', f'Стоимость в {base}'])
+    for wallet in result['wallets']:
+        table.add_row(
+            [
+                wallet['currency_code'],
+                f'{wallet['balance']:.8g}',
+                f'{wallet['value']:,.2f}',
+            ]
+        )
+    print(table)
+    print(f'ИТОГО: {result['total']:,.2f} {base}')
+
+def _parse_trade_options(args: list):
+    currency_opt = '--currency'
+    amount_opt = '--amount'
+    
+    options = _parse_options(args, {currency_opt: None, amount_opt: None})
     try:
-        amount_val = float(args[amount_idx]+1)
-    except:
-        raise ValueError('Переданое значение не относится к требуемому типу')
-    
-    buy = usecases.buy(args[currency_idx+1], amount_val)
-    
-    raise NotImplementedError
+        amount = float(options[amount_opt])
+        if not utils.is_positive(amount):
+            raise ValueError
+    except ValueError as error:
+        raise ValueError('\'amount\' должен быть положительным числом') from error
+    return (options[currency_opt], amount)
 
-def sell(args:list[str]):
-    raise NotImplementedError
+def _print_trade(result: dict, selling: bool):
+    action = 'Продажа' if selling else 'Покупка'
+    estimate = 'Оценочная выручка' if selling else 'Оценочная стоимость покупки'
+    code = result['currency_code']
+    print(
+        f'{action} выполнена: {result['amount']:.8g} {code} '
+        f'по курсу {result['rate']:,.2f} USD/{code}'
+    )
+    print('Изменения в портфеле:')
+    print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
+    print(f'{estimate}: {result['estimated_value']:,.2f} USD')
 
-def get_rate(args:list[str]):
-    raise NotImplementedError
+def buy(args:list, user_id:int):
+    currency, amount = _parse_trade_options(args)
+    _print_trade(usecases.buy(user_id, currency, amount), False)
 
-def execute_command(cmd: str):
-    print(cmd)
+def sell(args:list, user_id:int):
+    currency, amount = _parse_trade_options(args)
+    _print_trade(usecases.sell(user_id, currency, amount), True)
+
+def get_rate(args:list):
+    from_opt = '--from'
+    to_opt = '--to'
+
+    options = _parse_options(args, {from_opt: None, to_opt: None})
+    original, target = options[from_opt], options[to_opt]
+    rate, timestamp = usecases.get_rate(original, target)
+    print(f'Курс {original}→{target}: {rate:.8g} (обновлено: {timestamp})')
+    print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
+
+def execute_command(cmd: str, current_user:models.User=None):
     args = shlex.split(cmd)
     if not args:
-        return
-    
-    match args[0]:
+        return current_user
+    command, options = args[0], args[1:]
+    if command in {'show-portfolio', 'buy', 'sell'} and current_user is None:
+        raise ValueError('Сначала выполните login')
+    match command:
         case 'register':
-            register(args[1:])
+            register(options)
         case 'login':
-            login(args[1:])
+            return login(options)
         case 'show-portfolio':
-            show_portfolio(args[1:])
+            show_portfolio(options, current_user.id)
         case 'buy':
-            buy(args[1:])
+            buy(options, current_user.id)
         case 'sell':
-            sell(args[1:])
+            sell(options, current_user.id)
         case 'get-rate':
-            get_rate(args[1:])
+            get_rate(options)
         case _:
-            print(f'Функции {args[0]} нет')
+            print(f'Команда \'{command}\' не найдена')
+    return current_user
 
 def main():
+    current_user = None
     while True:
         try:
             user_input = prompt.string('> ')
-            if execute_command(user_input):
-                return 0
+            current_user = execute_command(user_input, current_user)
         except (EOFError, KeyboardInterrupt):
             return 0
-
+        except ValueError as error:
+            print(f'Ошибка: {error}')
