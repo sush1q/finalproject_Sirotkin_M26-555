@@ -35,15 +35,21 @@ def register(username:str, password:str):
     Вернуть сообщение об успехе.
     '''
     users = utils.read_data('users')
-    # TODO: пока не реализовали чтение
-    if any(record.get('username') == username for record in users):
-        raise ValueError(f'Имя пользователя \'{username}\' уже занято')
-    
-    loaded_users = [models.User.from_dict(record) for record in users]
-    portfolios = utils.read_data('portfolios')
-    new_id = max((user.id for user in loaded_users), default=0) + 1
-    user = models.User(new_id, username, '', '', datetime.now(timezone.utc))
+    user_id = 1
+    for data in users:
+        if data['username'] == username:
+            raise ValueError(f'Имя пользователя \'{username}\' уже занято')
+        user_id = max(user_id, data['user_id'] + 1)
+
+    user = models.User(user_id, username, '', '', datetime.now(timezone.utc))
     user.change_password(password)
+    portfolio = models.Portfolio(user_id, {}, user)
+    portfolios = utils.read_data('portfolios')
+    users.append(user.to_dict())
+    portfolios.append(portfolio.to_dict())
+    utils.save_data('users', users)
+    utils.save_data('portfolios', portfolios)
+    return user
 
 
 def login(username:str, password:str):
@@ -51,17 +57,15 @@ def login(username:str, password:str):
     Найти пользователя по username.
     Сравнить хеш пароля.
     '''
-    # TODO: пока не реализовали чтение
-    if username not in []:
-        raise ValueError(f'Пользователь \'{username}\' не найден')
+    for data in utils.read_data('users'):
+        if data['username'] == username:
+            user = models.User.from_dict(data)
+            if not user.verify_password(password):
+                raise ValueError('Неверный пароль')
+            return user
+    raise ValueError(f'Пользователь \'{username}\' не найден')
 
-    # TODO: загрузить инфу о пользователе
-    target_user = models.User('', '', '', '', '')
-    target_user.verify_password(password)
-    return target_user
-    
-
-def show_portfolio(base:str = 'USD'):
+def show_portfolio(user_id:int, base:str = 'USD'):
     '''
     Убедиться, что пользователь залогинен.
     Загрузить портфель пользователя.
@@ -69,19 +73,10 @@ def show_portfolio(base:str = 'USD'):
     Для каждого кошелька: показать currency_code, баланс и посчитать стоимость в base по текущим курсам;
     Показать сумму по всем кошелькам в base.
     '''
-    # TODO: не реализовано хранение залогиненых пользователей
-    # if 
-    #     raise ValueError('Сначала выполните login')
-    
-    # TODO: не реализовано хранилище кошельков
-    # if not in :
-    #     return models.Portfolio()
-    
-    # TODO: не реализовано хранилище и получение курсов
-    
-    raise NotImplementedError
-
-def buy(currency:str, amount:float):
+    if not utils.is_currency_fine(base):
+        raise ValueError('Некорректный код валюты')
+    cache = utils.read_data('rates')
+def buy(user_id:int, currency_code:str, amount:float):
     '''
     Проверить логин.
     Валидировать currency (формат) и amount > 0.
@@ -91,12 +86,19 @@ def buy(currency:str, amount:float):
     Получить текущий курс currency → base.
     Посчитать стоимость amount * rate и вывести в итог.
     '''
-    
-    
-    raise NotImplementedError
-
-def sell(currency:str, amount:float):
-    raise NotImplementedError
-
-def get_rate(original:str, targe:str):
-    raise NotImplementedError
+    if not utils.is_currency_fine(currency_code):
+        raise ValueError('Некорректный код валюты')
+    if not utils.is_positive(amount):
+        raise ValueError('\'amount\' должен быть положительным числом')
+def sell(user_id:int, currency_code:str, amount:float):
+    '''
+    Проверить логин.
+    Валидировать входные данные.
+    Проверить, что кошелёк существует и на нём достаточно средств.
+    Уменьшить баланс.
+    Опционально: начислить эквивалент в USD (если ведёте кошелёк USD).
+    '''
+    if not utils.is_currency_fine(currency_code):
+        raise ValueError('Некорректный код валюты')
+    if not utils.is_positive(amount):
+        raise ValueError('\'amount\' должен быть положительным числом')
