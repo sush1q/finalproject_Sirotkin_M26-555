@@ -1,7 +1,7 @@
 import json
 import pathlib
-from datetime import datetime
-from . import models
+from datetime import datetime, timezone
+from . import models, utils
 
 
 DATA_DIR = 'data'
@@ -65,7 +65,7 @@ def login(username:str, password:str):
             return user
     raise ValueError(f'Пользователь \'{username}\' не найден')
 
-def show_portfolio(user_id:int, base:str = 'USD'):
+def show_portfolio(user:models.User, base:str = 'USD'):
     '''
     Убедиться, что пользователь залогинен.
     Загрузить портфель пользователя.
@@ -76,7 +76,7 @@ def show_portfolio(user_id:int, base:str = 'USD'):
     if not utils.is_currency_fine(base):
         raise ValueError('Некорректный код валюты')
     cache = utils.read_data('rates')
-def buy(user_id:int, currency_code:str, amount:float):
+def buy(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
     Валидировать currency (формат) и amount > 0.
@@ -90,7 +90,7 @@ def buy(user_id:int, currency_code:str, amount:float):
         raise ValueError('Некорректный код валюты')
     if not utils.is_positive(amount):
         raise ValueError('\'amount\' должен быть положительным числом')
-def sell(user_id:int, currency_code:str, amount:float):
+def sell(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
     Валидировать входные данные.

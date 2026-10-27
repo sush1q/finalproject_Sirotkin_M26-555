@@ -41,10 +41,10 @@ def login(args:list):
     print(f'Вы вошли как \'{user.username}\'')
     return user
 
-def show_portfolio(args:list, user_id:int):
+def show_portfolio(args:list, user:models.User):
     base_opt = '--base'
     options = _parse_options(args, {base_opt: 'USD'})
-    result = usecases.show_portfolio(user_id, options[base_opt])
+    result = usecases.show_portfolio(user, options[base_opt])
     
     base = result['base']
     print(f'Портфель пользователя \'{result['username']}\' (база: {base}):')
@@ -88,13 +88,13 @@ def _print_trade(result: dict, selling: bool):
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
     print(f'{estimate}: {result['estimated_value']:,.2f} USD')
 
-def buy(args:list, user_id:int):
+def buy(args:list, user:models.User):
     currency, amount = _parse_trade_options(args)
-    _print_trade(usecases.buy(user_id, currency, amount), False)
+    _print_trade(usecases.buy(user, currency, amount), False)
 
-def sell(args:list, user_id:int):
+def sell(args:list, user:models.User):
     currency, amount = _parse_trade_options(args)
-    _print_trade(usecases.sell(user_id, currency, amount), True)
+    _print_trade(usecases.sell(user, currency, amount), True)
 
 def get_rate(args:list):
     from_opt = '--from'
@@ -119,11 +119,11 @@ def execute_command(cmd: str, current_user:models.User=None):
         case 'login':
             return login(options)
         case 'show-portfolio':
-            show_portfolio(options, current_user.id)
+            show_portfolio(options, current_user)
         case 'buy':
-            buy(options, current_user.id)
+            buy(options, current_user)
         case 'sell':
-            sell(options, current_user.id)
+            sell(options, current_user)
         case 'get-rate':
             get_rate(options)
         case _:
