@@ -72,8 +72,8 @@ def _parse_trade_options(args: list):
         amount = float(options[amount_opt])
         if not utils.is_positive(amount):
             raise ValueError
-    except ValueError as error:
-        raise ValueError('\'amount\' должен быть положительным числом') from error
+    except ValueError as e:
+        raise ValueError('\'amount\' должен быть положительным числом') from e
     return (options[currency_opt], amount)
 
 def _print_trade(result: dict, selling: bool):
@@ -138,5 +138,5 @@ def main():
             current_user = execute_command(user_input, current_user)
         except (EOFError, KeyboardInterrupt):
             return 0
-        except ValueError as error:
-            print(f'Ошибка: {error}')
+        except ValueError as e:
+            print(f'Ошибка: {e}')

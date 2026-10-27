@@ -14,7 +14,7 @@ class User:
             raise ValueError('Хэш и соль должны быть строками')
         
         self._user_id = id
-        self._username = username
+        self.username = username
         self._hashed_password = hashed_password
         self._salt = salt
         if not isinstance(registration_date, datetime):
@@ -97,8 +97,8 @@ class User:
                 data['salt'],
                 datetime.fromisoformat(data['registration_date']),
             )
-        except (KeyError, TypeError, ValueError) as error:
-            raise ValueError('Некорректная запись пользователя в users.json') from error
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError('Некорректная запись пользователя в users.json') from e
 
 
 class Wallet:
@@ -116,7 +116,7 @@ class Wallet:
     def balance(self, value):
         if not utils.is_positive(value):
             raise ValueError('Баланс не может быть отрицательным')
-        self._balance = value
+        self._balance = float(value)
 
     def deposit(self, amount: float):
         '''
@@ -152,8 +152,8 @@ class Wallet:
     def from_dict(cls, currency_code:str, data:dict):
         try:
             return cls(currency_code, data['balance'])
-        except (KeyError, TypeError, ValueError) as error:
-            raise ValueError('Некорректная запись кошелька в portfolios.json') from error
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError('Некорректная запись кошелька в portfolios.json') from e
 
 
 class Portfolio:
@@ -175,7 +175,7 @@ class Portfolio:
         return self._wallets.copy()
 
     def add_currency(self, currency_code: str):
-        if not utils.is_currency_fine():
+        if not utils.is_currency_fine(currency_code):
             raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
         
         if currency_code in self._wallets:
@@ -183,16 +183,16 @@ class Portfolio:
         self._wallets[currency_code] = Wallet(currency_code, 0)
 
     def get_total_value(self, base_currency='USD', rates=utils.DEFAULT_RATES):
-        if not utils.is_currency_fine():
+        if not utils.is_currency_fine(base_currency):
             raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
         
         return sum(
-            utils.convert_amount(wallet.balance, code, base_currency, rates)
+            utils.convert_amount(code, base_currency, wallet.balance, rates)
             for code, wallet in self._wallets.items()
         )
 
     def get_wallet(self, currency_code):
-        if not utils.is_currency_fine():
+        if not utils.is_currency_fine(currency_code):
             raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
 
         if currency_code not in self._wallets:
@@ -219,5 +219,5 @@ class Portfolio:
                 for code, wallet_data in data['wallets'].items()
             }
             return cls(data['user_id'], wallets, user)
-        except (KeyError, TypeError, AttributeError, ValueError) as error:
-            raise ValueError('Некорректная запись портфеля') from error
+        except (KeyError, TypeError, AttributeError, ValueError) as e:
+            raise ValueError('Некорректная запись портфеля') from e
