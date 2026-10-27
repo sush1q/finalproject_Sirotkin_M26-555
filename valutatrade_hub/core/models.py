@@ -102,7 +102,7 @@ class User:
 
 
 class Wallet:
-    def __init__(self, currency_code: str, balance: float):
+    def __init__(self, currency_code: str, balance: float=0.0):
         if not utils.is_currency_fine(currency_code):
             raise ValueError('Передан некорректный код валюты')
         self.currency_code = currency_code
@@ -142,7 +142,7 @@ class Wallet:
         self.balance = new_balance
 
     def get_balance_info(self):
-        print(f'Currency code: {self.currency_code}'\
+        print(f'Currency code: {self.currency_code}\n'\
             f'Balance: {self._balance}')
 
     def to_dict(self):
@@ -200,7 +200,7 @@ class Portfolio:
                 f'У вас нет кошелька \'{currency_code}\'. Добавьте валюту: '
                 'она создаётся автоматически при первой покупке.'
             )
-        return self._wallets[currency_code].copy()
+        return self._wallets[currency_code]
 
     def to_dict(self):
         return {

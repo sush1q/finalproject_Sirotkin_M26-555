@@ -76,25 +76,29 @@ def _parse_trade_options(args: list):
         raise ValueError('\'amount\' должен быть положительным числом') from e
     return (options[currency_opt], amount)
 
-def _print_trade(result: dict, selling: bool):
-    action = 'Продажа' if selling else 'Покупка'
-    estimate = 'Оценочная выручка' if selling else 'Оценочная стоимость покупки'
+def buy(args:list, user:models.User):
+    currency, amount = _parse_trade_options(args)
+    result = usecases.buy(user, currency, amount)
     code = result['currency_code']
     print(
-        f'{action} выполнена: {result['amount']:.8g} {code} '
-        f'по курсу {result['rate']:,.2f} USD/{code}'
+        f'Покупка выполнена: {result['amount']:.8g} {code} '
+        f'по курсу {result['rate']:,.8g} USD/{code}'
     )
     print('Изменения в портфеле:')
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
-    print(f'{estimate}: {result['estimated_value']:,.2f} USD')
-
-def buy(args:list, user:models.User):
-    currency, amount = _parse_trade_options(args)
-    _print_trade(usecases.buy(user, currency, amount), False)
+    print(f'Оценочная стоимость покупки: {result['estimated_value']:,.2f} USD')
 
 def sell(args:list, user:models.User):
     currency, amount = _parse_trade_options(args)
-    _print_trade(usecases.sell(user, currency, amount), True)
+    result = usecases.sell(user, currency, amount)
+    code = result['currency_code']
+    print(
+        f'Продажа выполнена: {result['amount']:.8g} {code} '
+        f'по курсу {result['rate']:,.8g} USD/{code}'
+    )
+    print('Изменения в портфеле:')
+    print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
+    print(f'Оценочная выручка: {result['estimated_value']:,.2f} USD')
 
 def get_rate(args:list):
     from_opt = '--from'
