@@ -114,7 +114,7 @@ class Wallet:
 
     @balance.setter
     def balance(self, value):
-        if not utils.is_positive(value):
+        if not utils.is_positive(value, allow_zero=True):
             raise ValueError('Баланс не может быть отрицательным')
         self._balance = float(value)
 

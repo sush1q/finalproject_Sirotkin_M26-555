@@ -13,8 +13,8 @@ DEFAULT_RATES = {
 }
 AVAILABLE_DATA_TYPES = {'users', 'portfolios', 'rates'}
 
-def is_positive(value: float):
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+def is_positive(value: float, allow_zero:bool=False):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and (value >= 0 if allow_zero else value > 0)
 
 def is_currency_fine(value: str) -> bool:
     return isinstance(value, str) and bool(value) and value == value.upper() and not any(char.isspace() for char in value)
