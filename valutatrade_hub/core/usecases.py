@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from . import models, utils
+from . import models, utils, exceptions
 
 
 RATES_TTL_SECONDS = 300
@@ -163,7 +163,7 @@ def get_rate(from_code:str, to_code:str):
         currencies.update(pair.split('_'))
     for code in (from_code, to_code):
         if code not in currencies:
-            raise ValueError(f'Неизвестная валюта \'{code}\'')
+            raise exceptions.CurrencyNotFoundError(code)
 
     now = datetime.now(timezone.utc)
     timestamp = now.isoformat().replace('+00:00', 'Z')

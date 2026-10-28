@@ -3,7 +3,7 @@ import secrets
 
 from datetime import datetime, timezone
 
-from . import utils
+from . import utils, exceptions
 
 
 class User:
@@ -134,10 +134,8 @@ class Wallet:
         if not utils.is_positive(amount):
             raise ValueError('Размер списания не может быть отрицательным')
         if amount > self.balance:
-            raise ValueError(
-                f'Недостаточно средств: доступно {self.balance:.8g} '
-                f'{self.currency_code}, требуется {amount:.8g} {self.currency_code}'
-            )
+            raise exceptions.InsufficientFundsError(self.balance, self.currency_code, amount)
+
         new_balance = self._balance - amount
         self.balance = new_balance
 

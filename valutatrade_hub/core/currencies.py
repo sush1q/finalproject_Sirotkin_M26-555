@@ -1,8 +1,5 @@
 import abc
-
-
-class CurrencyNotFoundError(Exception):
-    pass
+from . import exceptions
 
 
 class Currency(abc.ABC):
@@ -63,5 +60,5 @@ currency_registry = {}
 
 def get_currency(code: str) -> Currency:
     if code not in currency_registry:
-        raise CurrencyNotFoundError
+        raise exceptions.CurrencyNotFoundError(code)
     return currency_registry[code]
