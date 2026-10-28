@@ -32,6 +32,13 @@ exclude = ["venv", ".venv", "dist", "__pycache__"]
 select = ["E", "F", "I"]
 ignore = []
 
+[tool.valutatrade]
+data_path = "data"
+rates_ttl_seconds = 240
+base_currency = "USD"
+log_path = "logs"
+
+
 [dependency-groups]
 dev = [
     "ruff>=0.17.0",
