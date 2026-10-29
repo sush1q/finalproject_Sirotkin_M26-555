@@ -1,6 +1,7 @@
 import json
 import math
 from pathlib import Path
+from valutatrade_hub.core import exceptions
 from valutatrade_hub.infra import settings
 
 

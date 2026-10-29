@@ -106,8 +106,8 @@ def buy(user:models.User, currency_code:str, amount:float):
     Получить текущий курс currency → base.
     Посчитать стоимость amount * rate и вывести в итог.
     '''
-    if not utils.is_currency_fine(currency_code):
-        raise exceptions.ValutaTradeExceptions('Некорректный код валюты')
+    currency = currencies.get_currency(currency_code)
+
     if not utils.is_positive(amount):
         raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
 
@@ -136,8 +136,8 @@ def sell(user:models.User, currency_code:str, amount:float):
     Уменьшить баланс.
     Опционально: начислить эквивалент в USD (если ведёте кошелёк USD).
     '''
-    if not utils.is_currency_fine(currency_code):
-        raise exceptions.ValutaTradeExceptions('Некорректный код валюты')
+    currency = currencies.get_currency(currency_code)
+
     if not utils.is_positive(amount):
         raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
 
@@ -157,19 +157,10 @@ def sell(user:models.User, currency_code:str, amount:float):
     }
 
 def get_rate(from_code:str, to_code:str):
-    '''Возвращает курс и время: свежий кэш, затем фиксированная заглушка.'''
-    if not utils.is_currency_fine(from_code) or not utils.is_currency_fine(to_code):
-        raise exceptions.ValutaTradeExceptions(
-            'Код валюты должен быть строкой без пробелов в верхнем регистре'
-        )
+    orig_currency = currencies.get_currency(from_code)
+    target_currency = currencies.get_currency(to_code)
 
     cache = utils.read_data('rates')
-    currencies = {settings.SettingsLoader.get('base_currency', 'USD')}
-    for pair in utils.DEFAULT_RATES.keys() | cache['pairs'].keys():
-        currencies.update(pair.split('_'))
-    for code in (from_code, to_code):
-        if code not in currencies:
-            raise exceptions.CurrencyNotFoundError(code)
 
     now = datetime.now(timezone.utc)
     timestamp = now.isoformat().replace('+00:00', 'Z')

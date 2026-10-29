@@ -56,7 +56,13 @@ class CryptoCurrency(Currency):
         return f'[CRYPTO] {parent_info} (Algo: {self.algorithm}, MCAP: {self.market_cap})'
 
 
-currency_registry = {}
+currency_registry = {
+    FiatCurrency('Dollar', 'USD', "USA"),
+    FiatCurrency('Euro', 'EUR', 'Euro...'),
+    FiatCurrency('Rubble', 'RUB', 'Russia'),
+    FiatCurrency('Rubble', 'GBP', 'Great Britain'),
+    CryptoCurrency('Bitcoin', 'BTC', 'SHA-256', )
+}
 
 def get_currency(code: str) -> Currency:    
     if code not in currency_registry:

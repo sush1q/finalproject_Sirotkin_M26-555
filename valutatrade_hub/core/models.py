@@ -3,7 +3,7 @@ import secrets
 
 from datetime import datetime, timezone
 
-from valutatrade_hub.core import utils, exceptions
+from valutatrade_hub.core import utils, exceptions, currencies
 from valutatrade_hub.infra import settings
 
 
@@ -104,8 +104,7 @@ class User:
 
 class Wallet:
     def __init__(self, currency_code: str, balance: float=0.0):
-        if not utils.is_currency_fine(currency_code):
-            raise exceptions.ValutaTradeExceptions('Передан некорректный код валюты')
+        currencies.get_currency(currency_code)
         self.currency_code = currency_code
         self.balance = balance
 
@@ -174,16 +173,14 @@ class Portfolio:
         return self._wallets.copy()
 
     def add_currency(self, currency_code: str):
-        if not utils.is_currency_fine(currency_code):
-            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
-        
+        currencies.get_currency(currency_code)
+
         if currency_code in self._wallets:
             return
         self._wallets[currency_code] = Wallet(currency_code, 0)
 
     def get_total_value(self, base_currency=settings.SettingsLoader.get('base_currency', 'USD'), rates=utils.DEFAULT_RATES):
-        if not utils.is_currency_fine(base_currency):
-            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
+        currencies.get_currency(base_currency)
         
         return sum(
             utils.convert_amount(code, base_currency, wallet.balance, rates)
@@ -191,8 +188,7 @@ class Portfolio:
         )
 
     def get_wallet(self, currency_code):
-        if not utils.is_currency_fine(currency_code):
-            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
+        currencies.get_currency(currency_code)
 
         if currency_code not in self._wallets:
             raise exceptions.ValutaTradeExceptions(
