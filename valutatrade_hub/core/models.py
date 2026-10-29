@@ -10,16 +10,16 @@ from valutatrade_hub.infra import settings
 class User:
     def __init__(self, id:int, username:str, hashed_password:str, salt:str, registration_date: datetime):
         if isinstance(id, bool) or not isinstance(id, int) or id <= 0:
-            raise ValueError('ID пользователя должен быть положительным целым числом')
+            raise exceptions.ValutaTradeExceptions('ID пользователя должен быть положительным целым числом')
         if not isinstance(hashed_password, str) or not isinstance(salt, str):
-            raise ValueError('Хэш и соль должны быть строками')
+            raise exceptions.ValutaTradeExceptions('Хэш и соль должны быть строками')
         
         self._user_id = id
         self.username = username
         self._hashed_password = hashed_password
         self._salt = salt
         if not isinstance(registration_date, datetime):
-            raise ValueError('Дата регистрации должна быть datetime')
+            raise exceptions.ValutaTradeExceptions('Дата регистрации должна быть datetime')
 
         if registration_date.tzinfo is None:
             registration_date = registration_date.replace(tzinfo=timezone.utc)
@@ -36,7 +36,7 @@ class User:
     @username.setter
     def username(self, value):
         if not isinstance(value, str) or not value.strip():
-            raise ValueError('Имя не может быть пустым')
+            raise exceptions.ValutaTradeExceptions('Имя не может быть пустым')
         self._username = value
 
     @property
@@ -66,7 +66,7 @@ class User:
         изменяет пароль пользователя, с хешированием нового пароля
         '''
         if not isinstance(new_password, str) or len(new_password) < 4:
-            raise ValueError('Пароль должен быть не короче 4 символов')
+            raise exceptions.ValutaTradeExceptions('Пароль должен быть не короче 4 символов')
         self._salt = secrets.token_hex(16)
         self._hashed_password = hashlib.sha256((new_password + self._salt).encode(encoding='utf-8')).hexdigest()
 
@@ -98,14 +98,14 @@ class User:
                 data['salt'],
                 datetime.fromisoformat(data['registration_date']),
             )
-        except (KeyError, TypeError, ValueError) as e:
-            raise ValueError('Некорректная запись пользователя в users.json') from e
+        except (KeyError, TypeError, exceptions.ValutaTradeExceptions) as e:
+            raise exceptions.ValutaTradeExceptions('Некорректная запись пользователя в users.json') from e
 
 
 class Wallet:
     def __init__(self, currency_code: str, balance: float=0.0):
         if not utils.is_currency_fine(currency_code):
-            raise ValueError('Передан некорректный код валюты')
+            raise exceptions.ValutaTradeExceptions('Передан некорректный код валюты')
         self.currency_code = currency_code
         self.balance = balance
 
@@ -116,7 +116,7 @@ class Wallet:
     @balance.setter
     def balance(self, value):
         if not utils.is_positive(value, allow_zero=True):
-            raise ValueError('Баланс не может быть отрицательным')
+            raise exceptions.ValutaTradeExceptions('Баланс не может быть отрицательным')
         self._balance = float(value)
 
     def deposit(self, amount: float):
@@ -124,7 +124,7 @@ class Wallet:
         пополнение баланс
         '''
         if not utils.is_positive(amount):
-            raise ValueError('Размер пополнения не может быть отрицательным')
+            raise exceptions.ValutaTradeExceptions('Размер пополнения не может быть отрицательным')
         new_balance = self.balance + amount
         self.balance = new_balance
 
@@ -133,7 +133,7 @@ class Wallet:
         снятие средств (если баланс позволяет)
         '''
         if not utils.is_positive(amount):
-            raise ValueError('Размер списания не может быть отрицательным')
+            raise exceptions.ValutaTradeExceptions('Размер списания не может быть отрицательным')
         if amount > self.balance:
             raise exceptions.InsufficientFundsError(self.balance, self.currency_code, amount)
 
@@ -151,8 +151,8 @@ class Wallet:
     def from_dict(cls, currency_code:str, data:dict):
         try:
             return cls(currency_code, data['balance'])
-        except (KeyError, TypeError, ValueError) as e:
-            raise ValueError('Некорректная запись кошелька в portfolios.json') from e
+        except (KeyError, TypeError, exceptions.ValutaTradeExceptions) as e:
+            raise exceptions.ValutaTradeExceptions('Некорректная запись кошелька в portfolios.json') from e
 
 
 class Portfolio:
@@ -175,7 +175,7 @@ class Portfolio:
 
     def add_currency(self, currency_code: str):
         if not utils.is_currency_fine(currency_code):
-            raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
         
         if currency_code in self._wallets:
             return
@@ -183,7 +183,7 @@ class Portfolio:
 
     def get_total_value(self, base_currency=settings.SettingsLoader.get('base_currency', 'USD'), rates=utils.DEFAULT_RATES):
         if not utils.is_currency_fine(base_currency):
-            raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
         
         return sum(
             utils.convert_amount(code, base_currency, wallet.balance, rates)
@@ -192,10 +192,10 @@ class Portfolio:
 
     def get_wallet(self, currency_code):
         if not utils.is_currency_fine(currency_code):
-            raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой без пробелов в верхнем регистре')
 
         if currency_code not in self._wallets:
-            raise ValueError(
+            raise exceptions.ValutaTradeExceptions(
                 f'У вас нет кошелька \'{currency_code}\'. Добавьте валюту: '
                 'она создаётся автоматически при первой покупке.'
             )
@@ -218,5 +218,5 @@ class Portfolio:
                 for code, wallet_data in data['wallets'].items()
             }
             return cls(data['user_id'], wallets, user)
-        except (KeyError, TypeError, AttributeError, ValueError) as e:
-            raise ValueError('Некорректная запись портфеля') from e
+        except (KeyError, TypeError, AttributeError, exceptions.ValutaTradeExceptions) as e:
+            raise exceptions.ValutaTradeExceptions('Некорректная запись портфеля') from e

@@ -7,18 +7,18 @@ from valutatrade_hub.infra import settings
 
 def _parse_options(args:list, options:dict):
     if len(args) % 2:
-        raise ValueError('Для каждого аргумента нужно указать значение')
+        raise exceptions.ValutaTradeExceptions('Для каждого аргумента нужно указать значение')
     result = {}
     for index in range(0, len(args), 2):
         flag, value = args[index : index + 2]
         if flag not in options:
-            raise ValueError(f'Неизвестный аргумент \'{flag}\'')
+            raise exceptions.ValutaTradeExceptions(f'Неизвестный аргумент \'{flag}\'')
         if flag in result:
-            raise ValueError(f'Аргумент \'{flag}\' указан повторно')
+            raise exceptions.ValutaTradeExceptions(f'Аргумент \'{flag}\' указан повторно')
         result[flag] = value
     missing = [flag for flag, value in options.items() if value is None and flag not in result]
     if missing:
-        raise ValueError('Не указаны обязательные аргументы: ' + ', '.join(missing))
+        raise exceptions.ValutaTradeExceptions('Не указаны обязательные аргументы: ' + ', '.join(missing))
     return options | result
 
 def register(args:list):
@@ -71,9 +71,9 @@ def _parse_trade_options(args: list):
     try:
         amount = float(options[amount_opt])
         if not utils.is_positive(amount):
-            raise ValueError
-    except ValueError as e:
-        raise ValueError('\'amount\' должен быть положительным числом') from e
+            raise exceptions.ValutaTradeExceptions
+    except exceptions.ValutaTradeExceptions as e:
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
@@ -116,7 +116,7 @@ def execute_command(cmd: str, current_user:models.User=None):
         return current_user
     command, options = args[0], args[1:]
     if command in {'show-portfolio', 'buy', 'sell'} and current_user is None:
-        raise ValueError('Сначала выполните login')
+        raise exceptions.ValutaTradeExceptions('Сначала выполните login')
     match command:
         case 'register':
             register(options)
@@ -146,7 +146,7 @@ def main():
             print('предложить повторить позже / проверить сеть.') # TODO: доработать текстовку
         except exceptions.InsufficientFundsError as e:
             print(e)
-        except ValueError as e:
+        except exceptions.ValutaTradeExceptions as e:
             print(f'Ошибка: {e}')
         except (EOFError, KeyboardInterrupt):
             return 0

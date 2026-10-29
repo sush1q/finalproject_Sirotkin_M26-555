@@ -8,7 +8,7 @@ def _load_portfolio(user:models.User):
     for data in utils.read_data('portfolios'):
         if data['user_id'] == user.id:
             return models.Portfolio.from_dict(data, user)
-    raise ValueError(f'Портфель пользователя \'{user.username}\' не найден')
+    raise exceptions.PortfolionotFoundError(user.id)
 
 def _save_portfolio(portfolio:models.Portfolio):
     portfolios = utils.read_data('portfolios')
@@ -17,7 +17,7 @@ def _save_portfolio(portfolio:models.Portfolio):
             portfolios[index] = portfolio.to_dict()
             utils.save_data('portfolios', portfolios)
             return
-    raise ValueError(f'Портфель пользователя с id={portfolio.user_id} не найден')
+    raise exceptions.PortfolionotFoundError(portfolio.user_id)
 
 @decorators.log_action()
 def register(username:str, password:str):
@@ -33,7 +33,7 @@ def register(username:str, password:str):
     user_id = 1
     for data in users:
         if data['username'] == username:
-            raise ValueError(f'Имя пользователя \'{username}\' уже занято')
+            raise exceptions.ValutaTradeExceptions(f'Имя пользователя \'{username}\' уже занято')
         user_id = max(user_id, data['user_id'] + 1)
 
     user = models.User(user_id, username, '', '', datetime.now(timezone.utc))
@@ -56,9 +56,9 @@ def login(username:str, password:str):
         if data['username'] == username:
             user = models.User.from_dict(data)
             if not user.verify_password(password):
-                raise ValueError('Неверный пароль')
+                raise exceptions.InvalidPasswordError(username)
             return user
-    raise ValueError(f'Пользователь \'{username}\' не найден')
+    raise exceptions.UserNotFoundError(username)
 
 def show_portfolio(user:models.User, base:str = settings.SettingsLoader.get('base_currency', 'USD')):
     '''
@@ -69,14 +69,14 @@ def show_portfolio(user:models.User, base:str = settings.SettingsLoader.get('bas
     Показать сумму по всем кошелькам в base.
     '''
     if user is None:
-        raise ValueError('Пользователь не залогинен')
+        raise exceptions.ValutaTradeExceptions('Пользователь не залогинен')
     
     currency = currencies.get_currency(base)
     
     cache = utils.read_data('rates')
     pairs = utils.DEFAULT_RATES.keys() | cache['pairs'].keys()
     if base != settings.SettingsLoader.get('base_currency', 'USD') and not any(base in pair.split('_') for pair in pairs):
-        raise ValueError(f'Неизвестная базовая валюта \'{base}\'')
+        raise exceptions.ValutaTradeExceptions(f'Неизвестная базовая валюта \'{base}\'')
     portfolio = _load_portfolio(user)
     rates = {}
     rows = []
@@ -107,9 +107,9 @@ def buy(user:models.User, currency_code:str, amount:float):
     Посчитать стоимость amount * rate и вывести в итог.
     '''
     if not utils.is_currency_fine(currency_code):
-        raise ValueError('Некорректный код валюты')
+        raise exceptions.ValutaTradeExceptions('Некорректный код валюты')
     if not utils.is_positive(amount):
-        raise ValueError('\'amount\' должен быть положительным числом')
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
 
     portfolio = _load_portfolio(user)
     rate, _ = get_rate(currency_code, settings.SettingsLoader.get('base_currency', 'USD'))
@@ -137,9 +137,9 @@ def sell(user:models.User, currency_code:str, amount:float):
     Опционально: начислить эквивалент в USD (если ведёте кошелёк USD).
     '''
     if not utils.is_currency_fine(currency_code):
-        raise ValueError('Некорректный код валюты')
+        raise exceptions.ValutaTradeExceptions('Некорректный код валюты')
     if not utils.is_positive(amount):
-        raise ValueError('\'amount\' должен быть положительным числом')
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
 
     portfolio = _load_portfolio(user)
     wallet = portfolio.get_wallet(currency_code)
@@ -159,7 +159,7 @@ def sell(user:models.User, currency_code:str, amount:float):
 def get_rate(from_code:str, to_code:str):
     '''Возвращает курс и время: свежий кэш, затем фиксированная заглушка.'''
     if not utils.is_currency_fine(from_code) or not utils.is_currency_fine(to_code):
-        raise ValueError(
+        raise exceptions.ValutaTradeExceptions(
             'Код валюты должен быть строкой без пробелов в верхнем регистре'
         )
 
@@ -185,7 +185,7 @@ def get_rate(from_code:str, to_code:str):
         try:
             updated_at = datetime.fromisoformat(data['updated_at'])
             age = (now - updated_at).total_seconds()
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, exceptions.ValutaTradeExceptions):
             continue
         if 0 <= age < settings.SettingsLoader.get('rates_ttl_seconds', 300):
             rate = data['rate'] if pair == direct else 1 / data['rate']
@@ -199,8 +199,8 @@ def get_rate(from_code:str, to_code:str):
 
     try:
         rate = utils.convert_amount(from_code, to_code, 1.0, utils.DEFAULT_RATES)
-    except ValueError as e:
-        raise ValueError(
+    except exceptions.ValutaTradeExceptions as e:
+        raise exceptions.ValutaTradeExceptions(
             f'Курс {from_code}→{to_code} недоступен. Повторите попытку позже.'
         ) from e
     cache['pairs'][direct] = {

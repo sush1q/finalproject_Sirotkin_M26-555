@@ -32,9 +32,9 @@ def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> 
             to_usd = 1 if to_code == settings.SettingsLoader.get('base_currency', 'USD') else rates[f'{to_code}_USD']
             rate = from_usd / to_usd
     except (KeyError, TypeError, ZeroDivisionError) as e:
-        raise ValueError(f'Не удалось получить курс для {from_code}→{to_code}') from e
+        raise exceptions.ValutaTradeExceptions(f'Не удалось получить курс для {from_code}→{to_code}') from e
     if not is_positive(rate):
-        raise ValueError('Курс должен быть положительным числом')
+        raise exceptions.ValutaTradeExceptions('Курс должен быть положительным числом')
     return amount * rate
 
 def load_metadata(filepath, default=None):
@@ -51,18 +51,18 @@ def save_metadata(filepath, data):
 
 def read_data(kind:str):
     if kind not in AVAILABLE_DATA_TYPES:
-        raise ValueError(f'Неизвестный тип данных \'{kind}\'')
+        raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
 
     default = {'pairs': {}, 'last_refresh': None} if kind == 'rates' else []
     result = load_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', default)
     if kind == 'rates':
         if not isinstance(result, dict) or not isinstance(result.get('pairs'), dict):
-            raise ValueError('Некорректный формат rates.json: ожидается объект pairs')
+            raise exceptions.ValutaTradeExceptions('Некорректный формат rates.json: ожидается объект pairs')
     elif not isinstance(result, list) or any(not isinstance(record, dict) for record in result):
-        raise ValueError(f'Некорректный формат {kind}.json: ожидается список записей')
+        raise exceptions.ValutaTradeExceptions(f'Некорректный формат {kind}.json: ожидается список записей')
     return result
 
 def save_data(kind:str, data):
     if kind not in AVAILABLE_DATA_TYPES:
-        raise ValueError(f'Неизвестный тип данных \'{kind}\'')
+        raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
     save_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', data)

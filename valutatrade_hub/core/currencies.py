@@ -14,7 +14,7 @@ class Currency(abc.ABC):
     @name.setter
     def name(self, value:str):
         if not value:
-            raise ValueError('Имя не может быть пустым')
+            raise exceptions.ValutaTradeExceptions('Имя не может быть пустым')
         self.name = value
 
     @property
@@ -24,11 +24,11 @@ class Currency(abc.ABC):
     @code.setter
     def code(self, value:str):
         if not value.isupper() :
-            raise ValueError('Код валюты должен быть в верхнем регистре')
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть в верхнем регистре')
         if len(value) not in range(2,6):
-            raise ValueError('Код валюты должен быть длиной от 2 до 5 символов')
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть длиной от 2 до 5 символов')
         if any(c.isspace() for c in value):
-            raise ValueError('Код валюты не должен содержать пробелов')
+            raise exceptions.ValutaTradeExceptions('Код валюты не должен содержать пробелов')
         self.code = value
 
     def get_display_info(self) -> str:
