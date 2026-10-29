@@ -13,7 +13,7 @@ class Currency(abc.ABC):
 
     @name.setter
     def name(self, value:str):
-        if not value:
+        if not isinstance(value, str) or not value.strip():
             raise exceptions.ValutaTradeExceptions('Имя не может быть пустым')
         self.name = value
 
@@ -23,6 +23,8 @@ class Currency(abc.ABC):
     
     @code.setter
     def code(self, value:str):
+        if not isinstance(value, str):
+            raise exceptions.ValutaTradeExceptions('Код валюты должен быть строкой')
         if not value.isupper() :
             raise exceptions.ValutaTradeExceptions('Код валюты должен быть в верхнем регистре')
         if len(value) not in range(2,6):
@@ -57,11 +59,14 @@ class CryptoCurrency(Currency):
 
 
 currency_registry = {
-    FiatCurrency('Dollar', 'USD', "USA"),
-    FiatCurrency('Euro', 'EUR', 'Euro...'),
-    FiatCurrency('Rubble', 'RUB', 'Russia'),
-    FiatCurrency('Rubble', 'GBP', 'Great Britain'),
-    CryptoCurrency('Bitcoin', 'BTC', 'SHA-256', )
+    'USD': FiatCurrency('US Dollar', 'USD', 'United States'),
+    'EUR': FiatCurrency('Euro', 'EUR', 'Eurozone'),
+    'RUB': FiatCurrency('Russian Ruble', 'RUB', 'Russia'),
+    'GBP': FiatCurrency('Pound Sterling', 'GBP', 'United Kingdom'),
+
+    'BTC': CryptoCurrency('Bitcoin', 'BTC', 'SHA-256', 1.12e12),
+    'ETH': CryptoCurrency('Ether', 'ETH', 'Ethash', 0.0),
+    'SOL': CryptoCurrency('Solana', 'SOL', 'Proof of History', 0.0),
 }
 
 def get_currency(code: str) -> Currency:    
