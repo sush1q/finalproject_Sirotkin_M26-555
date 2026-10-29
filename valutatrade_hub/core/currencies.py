@@ -58,7 +58,7 @@ class CryptoCurrency(Currency):
 
 currency_registry = {}
 
-def get_currency(code: str) -> Currency:
+def get_currency(code: str) -> Currency:    
     if code not in currency_registry:
         raise exceptions.CurrencyNotFoundError(code)
     return currency_registry[code]

@@ -4,7 +4,7 @@ class ValutaTradeExceptions(Exception):
 class InsufficientFundsError(ValutaTradeExceptions):
     def __init__(self, available, code, required):
         super().__init__(f'Недостаточно средств: доступно {available} {code}, требуется {required} {code}')
-    
+
 class CurrencyNotFoundError(ValutaTradeExceptions):
     def __init__(self, code):
         super().__init__(f"Неизвестная валюта '{code}'")

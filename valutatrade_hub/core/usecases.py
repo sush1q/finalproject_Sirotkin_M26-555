@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from valutatrade_hub import decorators
-from valutatrade_hub.core import models, utils, exceptions
+from valutatrade_hub.core import models, utils, exceptions, currencies
 from valutatrade_hub.infra import settings
 
 
@@ -19,7 +19,7 @@ def _save_portfolio(portfolio:models.Portfolio):
             return
     raise ValueError(f'Портфель пользователя с id={portfolio.user_id} не найден')
 
-@decorators.log_action
+@decorators.log_action()
 def register(username:str, password:str):
     '''
     Проверить уникальность username в users.json.
@@ -46,7 +46,7 @@ def register(username:str, password:str):
     utils.save_data('portfolios', portfolios)
     return user
 
-@decorators.log_action
+@decorators.log_action()
 def login(username:str, password:str):
     '''
     Найти пользователя по username.
@@ -68,8 +68,11 @@ def show_portfolio(user:models.User, base:str = settings.SettingsLoader.get('bas
     Для каждого кошелька: показать currency_code, баланс и посчитать стоимость в base по текущим курсам;
     Показать сумму по всем кошелькам в base.
     '''
-    if not utils.is_currency_fine(base):
-        raise ValueError('Некорректный код валюты')
+    if user is None:
+        raise ValueError('Пользователь не залогинен')
+    
+    currency = currencies.get_currency(base)
+    
     cache = utils.read_data('rates')
     pairs = utils.DEFAULT_RATES.keys() | cache['pairs'].keys()
     if base != settings.SettingsLoader.get('base_currency', 'USD') and not any(base in pair.split('_') for pair in pairs):
@@ -92,7 +95,7 @@ def show_portfolio(user:models.User, base:str = settings.SettingsLoader.get('bas
         'total': portfolio.get_total_value(base, rates),
     }
 
-@decorators.log_action
+@decorators.log_action()
 def buy(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
@@ -124,7 +127,7 @@ def buy(user:models.User, currency_code:str, amount:float):
         'estimated_value': amount * rate,
     }
 
-@decorators.log_action
+@decorators.log_action()
 def sell(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
