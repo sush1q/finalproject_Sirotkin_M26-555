@@ -1,8 +1,8 @@
 import prompt
 import shlex
 from prettytable import PrettyTable
-
-from ..core import usecases, models, utils, exceptions
+from valutatrade_hub.core import usecases, models, utils, exceptions
+from valutatrade_hub.infra import settings
 
 
 def _parse_options(args:list, options:dict):
@@ -43,7 +43,7 @@ def login(args:list):
 
 def show_portfolio(args:list, user:models.User):
     base_opt = '--base'
-    options = _parse_options(args, {base_opt: 'USD'})
+    options = _parse_options(args, {base_opt: settings.SettingsLoader.get('base_currency', 'USD')})
     result = usecases.show_portfolio(user, options[base_opt])
     
     base = result['base']

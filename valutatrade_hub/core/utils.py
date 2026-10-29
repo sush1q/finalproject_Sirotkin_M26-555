@@ -1,8 +1,9 @@
 import json
 import math
 from pathlib import Path
+from valutatrade_hub.infra import settings
 
-DATA_DIR = Path('data')
+
 DEFAULT_RATES = {
     'EUR_USD': 1.0786,
     'BTC_USD': 59337.21,
@@ -30,8 +31,8 @@ def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> 
         elif reverse in rates:
             rate = 1 / rates[reverse]
         else:
-            from_usd = 1 if from_code == 'USD' else rates[f'{from_code}_USD']
-            to_usd = 1 if to_code == 'USD' else rates[f'{to_code}_USD']
+            from_usd = 1 if from_code == settings.SettingsLoader.get('base_currency', 'USD') else rates[f'{from_code}_USD']
+            to_usd = 1 if to_code == settings.SettingsLoader.get('base_currency', 'USD') else rates[f'{to_code}_USD']
             rate = from_usd / to_usd
     except (KeyError, TypeError, ZeroDivisionError) as e:
         raise ValueError(f'Не удалось получить курс для {from_code}→{to_code}') from e
@@ -56,7 +57,7 @@ def read_data(kind:str):
         raise ValueError(f'Неизвестный тип данных \'{kind}\'')
 
     default = {'pairs': {}, 'last_refresh': None} if kind == 'rates' else []
-    result = load_metadata(Path(DATA_DIR) / f'{kind}.json', default)
+    result = load_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', default)
     if kind == 'rates':
         if not isinstance(result, dict) or not isinstance(result.get('pairs'), dict):
             raise ValueError('Некорректный формат rates.json: ожидается объект pairs')
@@ -67,4 +68,4 @@ def read_data(kind:str):
 def save_data(kind:str, data):
     if kind not in AVAILABLE_DATA_TYPES:
         raise ValueError(f'Неизвестный тип данных \'{kind}\'')
-    save_metadata(Path(DATA_DIR) / f'{kind}.json', data)
+    save_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', data)

@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from . import models, utils, exceptions
+from valutatrade_hub import decorators
+from valutatrade_hub.core import models, utils, exceptions
+from valutatrade_hub.infra import settings
 
-
-RATES_TTL_SECONDS = 300
 
 def _load_portfolio(user:models.User):
     for data in utils.read_data('portfolios'):
@@ -19,6 +19,7 @@ def _save_portfolio(portfolio:models.Portfolio):
             return
     raise ValueError(f'Портфель пользователя с id={portfolio.user_id} не найден')
 
+@decorators.log_action
 def register(username:str, password:str):
     '''
     Проверить уникальность username в users.json.
@@ -45,7 +46,7 @@ def register(username:str, password:str):
     utils.save_data('portfolios', portfolios)
     return user
 
-
+@decorators.log_action
 def login(username:str, password:str):
     '''
     Найти пользователя по username.
@@ -59,7 +60,7 @@ def login(username:str, password:str):
             return user
     raise ValueError(f'Пользователь \'{username}\' не найден')
 
-def show_portfolio(user:models.User, base:str = 'USD'):
+def show_portfolio(user:models.User, base:str = settings.SettingsLoader.get('base_currency', 'USD')):
     '''
     Убедиться, что пользователь залогинен.
     Загрузить портфель пользователя.
@@ -71,7 +72,7 @@ def show_portfolio(user:models.User, base:str = 'USD'):
         raise ValueError('Некорректный код валюты')
     cache = utils.read_data('rates')
     pairs = utils.DEFAULT_RATES.keys() | cache['pairs'].keys()
-    if base != 'USD' and not any(base in pair.split('_') for pair in pairs):
+    if base != settings.SettingsLoader.get('base_currency', 'USD') and not any(base in pair.split('_') for pair in pairs):
         raise ValueError(f'Неизвестная базовая валюта \'{base}\'')
     portfolio = _load_portfolio(user)
     rates = {}
@@ -91,6 +92,7 @@ def show_portfolio(user:models.User, base:str = 'USD'):
         'total': portfolio.get_total_value(base, rates),
     }
 
+@decorators.log_action
 def buy(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
@@ -107,7 +109,7 @@ def buy(user:models.User, currency_code:str, amount:float):
         raise ValueError('\'amount\' должен быть положительным числом')
 
     portfolio = _load_portfolio(user)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, settings.SettingsLoader.get('base_currency', 'USD'))
     portfolio.add_currency(currency_code)
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
@@ -122,6 +124,7 @@ def buy(user:models.User, currency_code:str, amount:float):
         'estimated_value': amount * rate,
     }
 
+@decorators.log_action
 def sell(user:models.User, currency_code:str, amount:float):
     '''
     Проверить логин.
@@ -139,7 +142,7 @@ def sell(user:models.User, currency_code:str, amount:float):
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
     wallet.withdraw(amount)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, settings.SettingsLoader.get('base_currency', 'USD'))
     _save_portfolio(portfolio)
     return {
         'currency_code': currency_code,
@@ -158,7 +161,7 @@ def get_rate(from_code:str, to_code:str):
         )
 
     cache = utils.read_data('rates')
-    currencies = {'USD'}
+    currencies = {settings.SettingsLoader.get('base_currency', 'USD')}
     for pair in utils.DEFAULT_RATES.keys() | cache['pairs'].keys():
         currencies.update(pair.split('_'))
     for code in (from_code, to_code):
@@ -181,14 +184,14 @@ def get_rate(from_code:str, to_code:str):
             age = (now - updated_at).total_seconds()
         except (KeyError, TypeError, ValueError):
             continue
-        if 0 <= age < RATES_TTL_SECONDS:
+        if 0 <= age < settings.SettingsLoader.get('rates_ttl_seconds', 300):
             rate = data['rate'] if pair == direct else 1 / data['rate']
             return rate, data['updated_at']
 
     # Кросс-курс состоит из двух обычных курсов к USD.
-    if from_code != 'USD' and to_code != 'USD':
-        from_usd, from_time = get_rate(from_code, 'USD')
-        to_usd, to_time = get_rate(to_code, 'USD')
+    if from_code != settings.SettingsLoader.get('base_currency', 'USD') and to_code != settings.SettingsLoader.get('base_currency', 'USD'):
+        from_usd, from_time = get_rate(from_code, settings.SettingsLoader.get('base_currency', 'USD'))
+        to_usd, to_time = get_rate(to_code, settings.SettingsLoader.get('base_currency', 'USD'))
         return from_usd / to_usd, min(from_time, to_time, key=datetime.fromisoformat)
 
     try:

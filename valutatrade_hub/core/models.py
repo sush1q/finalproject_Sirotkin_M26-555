@@ -3,7 +3,8 @@ import secrets
 
 from datetime import datetime, timezone
 
-from . import utils, exceptions
+from valutatrade_hub.core import utils, exceptions
+from valutatrade_hub.infra import settings
 
 
 class User:
@@ -180,7 +181,7 @@ class Portfolio:
             return
         self._wallets[currency_code] = Wallet(currency_code, 0)
 
-    def get_total_value(self, base_currency='USD', rates=utils.DEFAULT_RATES):
+    def get_total_value(self, base_currency=settings.SettingsLoader.get('base_currency', 'USD'), rates=utils.DEFAULT_RATES):
         if not utils.is_currency_fine(base_currency):
             raise ValueError('Код валюты должен быть строкой без пробелов в верхнем регистре')
         
