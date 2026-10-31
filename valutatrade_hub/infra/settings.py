@@ -1,4 +1,7 @@
 import tomllib
+from pathlib import Path
+
+from valutatrade_hub.core import exceptions
 
 
 class SettingsLoader:
@@ -6,6 +9,7 @@ class SettingsLoader:
     __data = None
     
     def __new__(cls):
+        # __new__ выбран как простой способ возвращать один экземпляр
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
         return cls.__instance
@@ -18,7 +22,15 @@ class SettingsLoader:
 
     @classmethod
     def reload(cls):
-        with open("pyproject.toml", "rb") as f:
-            data = tomllib.load(f)
-            if data.get('tool') is not None:
-                cls.__data = data.get('tool').get('valutatrade')
+        path = Path('pyproject.toml')
+        try:
+            with path.open('rb') as f:
+                data = tomllib.load(f)
+        except FileNotFoundError:
+            cls.__data = {}
+            return
+        except (OSError, ValueError) as e:
+            raise exceptions.ValutaTradeExceptions(
+                f'Не удалось загрузить настройки: {e}'
+            ) from e
+        cls.__data = data.get('tool', {}).get('valutatrade', {})

@@ -98,7 +98,7 @@ class User:
                 data['salt'],
                 datetime.fromisoformat(data['registration_date']),
             )
-        except (KeyError, TypeError, exceptions.ValutaTradeExceptions) as e:
+        except (KeyError, TypeError, ValueError, exceptions.ValutaTradeExceptions) as e:
             raise exceptions.ValutaTradeExceptions('Некорректная запись пользователя в users.json') from e
 
 

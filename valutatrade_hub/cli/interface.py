@@ -141,9 +141,11 @@ def main():
             user_input = prompt.string('> ')
             current_user = execute_command(user_input, current_user)
         except exceptions.CurrencyNotFoundError as e:
-            print('предлагать help get-rate или показать список поддерживаемых кодов') # TODO: необходимо доработать, пока не понятно что имеется ввиду под help get-rate, потому что нигде про help не писалось ранее, а получения списка доступных валют тоже пока не было        
+            print(e)
+            print('Доступные валюты: ' + ', '.join(currencies.currency_registry))
         except exceptions.ApiRequestError as e:
-            print('предложить повторить позже / проверить сеть.') # TODO: доработать текстовку
+            print(e)
+            print('Повторите попытку позже или проверьте подключение к сети.')
         except exceptions.InsufficientFundsError as e:
             print(e)
         except exceptions.ValutaTradeExceptions as e:

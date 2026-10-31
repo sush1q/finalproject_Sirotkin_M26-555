@@ -29,8 +29,8 @@ def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> 
         elif reverse in rates:
             rate = 1 / rates[reverse]
         else:
-            from_usd = 1 if from_code == settings.SettingsLoader.get('base_currency', 'USD') else rates[f'{from_code}_USD']
-            to_usd = 1 if to_code == settings.SettingsLoader.get('base_currency', 'USD') else rates[f'{to_code}_USD']
+            from_usd = 1 if from_code == 'USD' else rates[f'{from_code}_USD']
+            to_usd = 1 if to_code == 'USD' else rates[f'{to_code}_USD']
             rate = from_usd / to_usd
     except (KeyError, TypeError, ZeroDivisionError) as e:
         raise exceptions.ValutaTradeExceptions(f'Не удалось получить курс для {from_code}→{to_code}') from e

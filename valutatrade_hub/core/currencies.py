@@ -9,17 +9,17 @@ class Currency(abc.ABC):
         
     @property
     def name(self):
-        return self.name
+        return self._name
 
     @name.setter
     def name(self, value:str):
         if not isinstance(value, str) or not value.strip():
             raise exceptions.ValutaTradeExceptions('Имя не может быть пустым')
-        self.name = value
+        self._name = value
 
     @property
     def code(self):
-        return self.code
+        return self._code
     
     @code.setter
     def code(self, value:str):
@@ -31,7 +31,7 @@ class Currency(abc.ABC):
             raise exceptions.ValutaTradeExceptions('Код валюты должен быть длиной от 2 до 5 символов')
         if any(c.isspace() for c in value):
             raise exceptions.ValutaTradeExceptions('Код валюты не должен содержать пробелов')
-        self.code = value
+        self._code = value
 
     def get_display_info(self) -> str:
         return f'{self.code} - {self.name}'
