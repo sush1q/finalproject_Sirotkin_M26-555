@@ -1,24 +1,25 @@
 import prompt
 import shlex
 from prettytable import PrettyTable
-
-from ..core import usecases, models, utils
+from valutatrade_hub import logging_config
+from valutatrade_hub.core import usecases, models, utils, exceptions, currencies
+from valutatrade_hub.infra import settings
 
 
 def _parse_options(args:list, options:dict):
     if len(args) % 2:
-        raise ValueError('Для каждого аргумента нужно указать значение')
+        raise exceptions.ValutaTradeExceptions('Для каждого аргумента нужно указать значение')
     result = {}
     for index in range(0, len(args), 2):
         flag, value = args[index : index + 2]
         if flag not in options:
-            raise ValueError(f'Неизвестный аргумент \'{flag}\'')
+            raise exceptions.ValutaTradeExceptions(f'Неизвестный аргумент \'{flag}\'')
         if flag in result:
-            raise ValueError(f'Аргумент \'{flag}\' указан повторно')
+            raise exceptions.ValutaTradeExceptions(f'Аргумент \'{flag}\' указан повторно')
         result[flag] = value
     missing = [flag for flag, value in options.items() if value is None and flag not in result]
     if missing:
-        raise ValueError('Не указаны обязательные аргументы: ' + ', '.join(missing))
+        raise exceptions.ValutaTradeExceptions('Не указаны обязательные аргументы: ' + ', '.join(missing))
     return options | result
 
 def register(args:list):
@@ -43,7 +44,7 @@ def login(args:list):
 
 def show_portfolio(args:list, user:models.User):
     base_opt = '--base'
-    options = _parse_options(args, {base_opt: 'USD'})
+    options = _parse_options(args, {base_opt: settings.SettingsLoader.get('base_currency', 'USD')})
     result = usecases.show_portfolio(user, options[base_opt])
     
     base = result['base']
@@ -70,10 +71,10 @@ def _parse_trade_options(args: list):
     options = _parse_options(args, {currency_opt: None, amount_opt: None})
     try:
         amount = float(options[amount_opt])
-        if not utils.is_positive(amount):
-            raise ValueError
-    except ValueError as e:
-        raise ValueError('\'amount\' должен быть положительным числом') from e
+    except (TypeError, ValueError) as e:
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
+    if not utils.is_positive(amount):
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
@@ -116,7 +117,7 @@ def execute_command(cmd: str, current_user:models.User=None):
         return current_user
     command, options = args[0], args[1:]
     if command in {'show-portfolio', 'buy', 'sell'} and current_user is None:
-        raise ValueError('Сначала выполните login')
+        raise exceptions.ValutaTradeExceptions('Сначала выполните login')
     match command:
         case 'register':
             register(options)
@@ -135,12 +136,25 @@ def execute_command(cmd: str, current_user:models.User=None):
     return current_user
 
 def main():
+    try:
+        logging_config.setup_logging()
+    except exceptions.ValutaTradeExceptions as e:
+        print(f'Ошибка: {e}')
+        return 1
     current_user = None
     while True:
         try:
             user_input = prompt.string('> ')
             current_user = execute_command(user_input, current_user)
+        except exceptions.CurrencyNotFoundError as e:
+            print(e)
+            print('Доступные валюты: ' + ', '.join(currencies.currency_registry))
+        except exceptions.ApiRequestError as e:
+            print(e)
+            print('Повторите попытку позже или проверьте подключение к сети.')
+        except exceptions.InsufficientFundsError as e:
+            print(e)
+        except exceptions.ValutaTradeExceptions as e:
+            print(f'Ошибка: {e}')
         except (EOFError, KeyboardInterrupt):
             return 0
-        except ValueError as e:
-            print(f'Ошибка: {e}')
