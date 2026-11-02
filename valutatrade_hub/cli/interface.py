@@ -1,7 +1,8 @@
 import prompt
 import shlex
 from prettytable import PrettyTable
-from valutatrade_hub.core import usecases, models, utils, exceptions
+from valutatrade_hub import logging_config
+from valutatrade_hub.core import usecases, models, utils, exceptions, currencies
 from valutatrade_hub.infra import settings
 
 
@@ -70,10 +71,10 @@ def _parse_trade_options(args: list):
     options = _parse_options(args, {currency_opt: None, amount_opt: None})
     try:
         amount = float(options[amount_opt])
-        if not utils.is_positive(amount):
-            raise exceptions.ValutaTradeExceptions
-    except exceptions.ValutaTradeExceptions as e:
+    except (TypeError, ValueError) as e:
         raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
+    if not utils.is_positive(amount):
+        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
@@ -135,6 +136,11 @@ def execute_command(cmd: str, current_user:models.User=None):
     return current_user
 
 def main():
+    try:
+        logging_config.setup_logging()
+    except exceptions.ValutaTradeExceptions as e:
+        print(f'Ошибка: {e}')
+        return 1
     current_user = None
     while True:
         try:
