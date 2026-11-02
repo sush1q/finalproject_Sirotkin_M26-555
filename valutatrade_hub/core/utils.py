@@ -1,8 +1,5 @@
-import json
 import math
-from pathlib import Path
 from valutatrade_hub.core import exceptions
-from valutatrade_hub.infra import settings
 
 
 DEFAULT_RATES = {
@@ -13,7 +10,6 @@ DEFAULT_RATES = {
     'GBP_USD': 1 / 0.809,
     'SOL_USD': 145.12,
 }
-AVAILABLE_DATA_TYPES = {'users', 'portfolios', 'rates'}
 
 def is_positive(value: float, allow_zero:bool=False):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and (value >= 0 if allow_zero else value > 0)
@@ -37,33 +33,3 @@ def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> 
     if not is_positive(rate):
         raise exceptions.ValutaTradeExceptions('Курс должен быть положительным числом')
     return amount * rate
-
-def load_metadata(filepath, default=None):
-    try:
-        with open(filepath, "r", encoding="utf-8") as file:
-            return json.loads(file.read())
-    except FileNotFoundError:
-        return {} if default is None else default
-
-def save_metadata(filepath, data):
-    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-    with open(filepath, "w", encoding="utf-8") as file:
-        file.write(json.dumps(data))
-
-def read_data(kind:str):
-    if kind not in AVAILABLE_DATA_TYPES:
-        raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
-
-    default = {'pairs': {}, 'last_refresh': None} if kind == 'rates' else []
-    result = load_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', default)
-    if kind == 'rates':
-        if not isinstance(result, dict) or not isinstance(result.get('pairs'), dict):
-            raise exceptions.ValutaTradeExceptions('Некорректный формат rates.json: ожидается объект pairs')
-    elif not isinstance(result, list) or any(not isinstance(record, dict) for record in result):
-        raise exceptions.ValutaTradeExceptions(f'Некорректный формат {kind}.json: ожидается список записей')
-    return result
-
-def save_data(kind:str, data):
-    if kind not in AVAILABLE_DATA_TYPES:
-        raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
-    save_metadata(Path(settings.SettingsLoader.get('data_path', 'data')) / f'{kind}.json', data)
