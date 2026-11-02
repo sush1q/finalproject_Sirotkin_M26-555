@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "prettytable>=3.18.0",
     "prompt>=0.4.1",
+    "requests>=2.34.2",
 ]
 
 [project.scripts]
@@ -41,6 +42,8 @@ log_format = "%(levelname)s %(message)s"
 log_level = "INFO"
 log_max_bytes = 1000000
 log_backup_count = 3
+request_timeout = 10
+parser_update_interval = 3600
 
 
 [dependency-groups]
