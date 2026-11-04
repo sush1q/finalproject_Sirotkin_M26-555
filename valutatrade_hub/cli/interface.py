@@ -1,29 +1,42 @@
-import prompt
 import shlex
+from decimal import Decimal
+
+import prompt
 from prettytable import PrettyTable
+
 from valutatrade_hub import logging_config
-from valutatrade_hub.core import usecases, models, exceptions, currencies
+from valutatrade_hub.core import currencies, exceptions, models, usecases
 from valutatrade_hub.infra import settings
 from valutatrade_hub.parser_service import updater
 
 
 def _parse_options(args:list, options:dict):
     if len(args) % 2:
-        raise exceptions.ValutaTradeExceptions('Для каждого аргумента нужно указать значение')
+        raise exceptions.ValutaTradeExceptions(
+            'Для каждого аргумента нужно указать значение'
+        )
     result = {}
     for index in range(0, len(args), 2):
         flag, value = args[index : index + 2]
         if flag not in options:
             raise exceptions.ValutaTradeExceptions(f'Неизвестный аргумент \'{flag}\'')
         if flag in result:
-            raise exceptions.ValutaTradeExceptions(f'Аргумент \'{flag}\' указан повторно')
+            raise exceptions.ValutaTradeExceptions(
+                f'Аргумент \'{flag}\' указан повторно'
+            )
         result[flag] = value
-    missing = [flag for flag, value in options.items() if value is None and flag not in result]
+    missing = [
+        flag for flag, value in options.items()
+        if value is None and flag not in result
+    ]
     if missing:
-        raise exceptions.ValutaTradeExceptions('Не указаны обязательные аргументы: ' + ', '.join(missing))
+        raise exceptions.ValutaTradeExceptions(
+            'Не указаны обязательные аргументы: ' + ', '.join(missing)
+        )
     return options | result
 
 def register(args:list):
+    '''Разбирает опции регистрации и печатает результат создания пользователя'''
     username = '--username'
     password = '--password'
     options = {username: None, password: None}
@@ -36,6 +49,7 @@ def register(args:list):
     )
 
 def login(args:list):
+    '''Проверяет опции входа, печатает результат и возвращает User для сессии CLI'''
     username = '--username'
     password = '--password'
     options = _parse_options(args, {username: None, password: None})
@@ -44,8 +58,11 @@ def login(args:list):
     return user
 
 def show_portfolio(args:list, user:models.User):
+    '''Печатает таблицу кошельков и общий итог в выбранной базовой валюте'''
     base_opt = '--base'
-    options = _parse_options(args, {base_opt: settings.SettingsLoader.get('base_currency', 'USD')})
+    options = _parse_options(
+        args, {base_opt: settings.SettingsLoader.get('base_currency', 'USD')}
+    )
     result = usecases.show_portfolio(user, options[base_opt])
     
     base = result['base']
@@ -73,44 +90,62 @@ def _parse_trade_options(args: list):
     try:
         amount = float(options[amount_opt])
     except (TypeError, ValueError) as e:
-        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
+        raise exceptions.ValutaTradeExceptions(
+            '\'amount\' должен быть положительным числом'
+        ) from e
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
+    '''Вызывает покупку и печатает изменения валютного и расчётного кошельков'''
     currency, amount = _parse_trade_options(args)
     result = usecases.buy(user, currency, amount)
     code = result['currency_code']
+    base = result['base']
     print(
         f'Покупка выполнена: {result['amount']:.8g} {code} '
-        f'по курсу {result['rate']:,.8g} USD/{code}'
+        f'по курсу {result['rate']:,.8g} {base}/{code}'
     )
     print('Изменения в портфеле:')
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
-    print(f'Оценочная стоимость покупки: {result['estimated_value']:,.2f} USD')
+    print(
+        f'- {base}: было {result['base_before']:,.2f} '
+        f'→ стало {result['base_after']:,.2f}'
+    )
+    print(f'Стоимость покупки: {result['total']:,.2f} {base}')
 
 def sell(args:list, user:models.User):
+    '''Вызывает продажу и печатает изменения валютного и расчётного кошельков'''
     currency, amount = _parse_trade_options(args)
     result = usecases.sell(user, currency, amount)
     code = result['currency_code']
+    base = result['base']
     print(
         f'Продажа выполнена: {result['amount']:.8g} {code} '
-        f'по курсу {result['rate']:,.8g} USD/{code}'
+        f'по курсу {result['rate']:,.8g} {base}/{code}'
     )
     print('Изменения в портфеле:')
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
-    print(f'Оценочная выручка: {result['estimated_value']:,.2f} USD')
+    print(
+        f'- {base}: было {result['base_before']:,.2f} '
+        f'→ стало {result['base_after']:,.2f}'
+    )
+    print(f'Выручка: {result['total']:,.2f} {base}')
 
 def get_rate(args:list):
+    '''Печатает прямой и обратный курсы с временем обновления'''
     from_opt = '--from'
     to_opt = '--to'
 
     options = _parse_options(args, {from_opt: None, to_opt: None})
     original, target = options[from_opt], options[to_opt]
     rate, timestamp = usecases.get_rate(original, target)
-    print(f'Курс {original}→{target}: {rate:.8g} (обновлено: {timestamp})')
-    print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
+    rate_text = format(Decimal(f'{rate:.8g}'), 'f')
+    inverse_text = format(Decimal(f'{1 / rate:.8g}'), 'f')
+    print(f'Курс {original}→{target}: {rate_text} (обновлено: {timestamp})')
+    print(f'Обратный курс {target}→{original}: {inverse_text}')
 
 def update_rates(args:list):
+    '''Обновляет выбранные источники и печатает итог с консольными логами Parser'''
     source_opt = '--source'
     
     options = _parse_options(args, {source_opt: ''})
@@ -122,7 +157,10 @@ def update_rates(args:list):
             'Update completed with errors. Check '
             f'{settings.SettingsLoader.get('log_path', 'logs')}/parser.log for details.'
         )
-        print(f'Total rates updated: {result['updated_count']}. Last refresh: {result['last_refresh']}')
+        print(
+            f'Total rates updated: {result['updated_count']}. '
+            f'Last refresh: {result['last_refresh']}'
+        )
     else:
         print(
             f'Update successful. Total rates updated: {result['updated_count']}. '
@@ -130,6 +168,7 @@ def update_rates(args:list):
         )
 
 def show_rates(args:list):
+    '''Печатает таблицу кеша с фильтрами валюты, количества криптовалют и базы'''
     currency_opt = '--currency'
     top_opt = '--top'
     base_opt = '--base'
@@ -155,6 +194,12 @@ def show_rates(args:list):
     print(table)
 
 def execute_command(cmd: str, current_user:models.User=None):
+    '''
+    Разбирает одну команду и возвращает текущего пользователя
+
+    Доменные ошибки передаются основному циклу;
+    Для операций портфеля требуется вход
+    '''
     try:
         args = shlex.split(cmd)
     except ValueError as e:
@@ -186,6 +231,7 @@ def execute_command(cmd: str, current_user:models.User=None):
     return current_user
 
 def main():
+    '''Основной цикл программы'''
     try:
         logging_config.setup_logging()
     except exceptions.ValutaTradeExceptions as e:

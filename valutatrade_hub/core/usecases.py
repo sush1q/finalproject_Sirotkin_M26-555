@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+
 from valutatrade_hub import decorators
-from valutatrade_hub.core import models, utils, exceptions, currencies
+from valutatrade_hub.core import currencies, exceptions, models, utils
 from valutatrade_hub.infra import database, settings
 from valutatrade_hub.parser_service import updater
 
@@ -9,7 +10,7 @@ def _load_portfolio(user:models.User):
     for data in database.DatabaseManager().read_data('portfolios'):
         if data['user_id'] == user.id:
             return models.Portfolio.from_dict(data, user)
-    raise exceptions.PortfolionotFoundError(user.id)
+    raise exceptions.PortfolioNotFoundError(user.id)
 
 def _save_portfolio(portfolio:models.Portfolio):
     portfolios = database.DatabaseManager().read_data('portfolios')
@@ -18,24 +19,22 @@ def _save_portfolio(portfolio:models.Portfolio):
             portfolios[index] = portfolio.to_dict()
             database.DatabaseManager().save_data('portfolios', portfolios)
             return
-    raise exceptions.PortfolionotFoundError(portfolio.user_id)
+    raise exceptions.PortfolioNotFoundError(portfolio.user_id)
 
 @decorators.log_action()
 def register(username:str, password:str):
     '''
-    Проверить уникальность username в users.json.
-    Сгенерировать user_id (например, автоинкремент).
-    Захешировать пароль (делайте односторонний псевдо-хеш (например, hashlib.sha256(password + salt)), соль храните рядом.).
-    Сохранить пользователя в users.json.
-    Создать пустой портфель (portfolios.json: user_id + пустой словарь кошельков).
-    Вернуть сообщение об успехе.
+    Создаёт User с уникальным именем и пустой портфель, сохраняет их в JSON
+    Возвращает User. Занятое имя или некорректные данные вызывают ошибку приложения
     '''
     db = database.DatabaseManager()
     users = db.read_data('users')
     user_id = 1
     for data in users:
         if data['username'] == username:
-            raise exceptions.ValutaTradeExceptions(f'Имя пользователя \'{username}\' уже занято')
+            raise exceptions.ValutaTradeExceptions(
+                f'Имя пользователя \'{username}\' уже занято'
+            )
         user_id = max(user_id, data['user_id'] + 1)
 
     user = models.User(user_id, username, '', '', datetime.now(timezone.utc))
@@ -50,10 +49,7 @@ def register(username:str, password:str):
 
 @decorators.log_action()
 def login(username:str, password:str):
-    '''
-    Найти пользователя по username.
-    Сравнить хеш пароля.
-    '''
+    '''Возвращает User после проверки имени и пароля; состояние сессии не хранит'''
     for data in database.DatabaseManager().read_data('users'):
         if data['username'] == username:
             user = models.User.from_dict(data)
@@ -64,11 +60,9 @@ def login(username:str, password:str):
 
 def show_portfolio(user:models.User, base:str=None):
     '''
-    Убедиться, что пользователь залогинен.
-    Загрузить портфель пользователя.
-    Если кошельков нет — сообщить об этом.
-    Для каждого кошелька: показать currency_code, баланс и посчитать стоимость в base по текущим курсам;
-    Показать сумму по всем кошелькам в base.
+    Возвращает строки кошельков и итог в выбранной базе по актуальным курсам
+
+    Для пустого портфеля возвращает пустой список и нулевой итог
     '''
     if user is None:
         raise exceptions.ValutaTradeExceptions('Пользователь не залогинен')
@@ -95,21 +89,30 @@ def show_portfolio(user:models.User, base:str=None):
 @decorators.log_action()
 def buy(user:models.User, currency_code:str, amount:float):
     '''
-    Проверить логин.
-    Валидировать currency (формат) и amount > 0.
-    Если в портфеле нет такого кошелька — автоматически создать (как делает add_currency).
-    Увеличить баланс кошелька на amount.
-    Опционально (по желанию) вести «расчётную стоимость» покупки для отчёта:
-    Получить текущий курс currency → base.
-    Посчитать стоимость amount * rate и вывести в итог.
+    Покупает валюту за базовую валюту из настроек и сохраняет оба баланса в портфеле
+
+    Возвращает количество, стоимость, курс и балансы обоих кошельков до и после
+    При нехватке базовой валюты выбрасывает InsufficientFundsError
     '''
     currencies.get_currency(currency_code)
 
     if not utils.is_positive(amount):
-        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
+        raise exceptions.ValutaTradeExceptions(
+            '\'amount\' должен быть положительным числом'
+        )
+    base = settings.SettingsLoader.get('base_currency', 'USD')
+    if currency_code == base:
+        raise exceptions.ValutaTradeExceptions(
+            f'{base} используется для расчётов. Выберите другую валюту для сделки'
+        )
 
     portfolio = _load_portfolio(user)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, base)
+    total = amount * rate
+    portfolio.add_currency(base)
+    base_wallet = portfolio.get_wallet(base)
+    base_before = base_wallet.balance
+    base_wallet.withdraw(total)
     portfolio.add_currency(currency_code)
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
@@ -119,43 +122,64 @@ def buy(user:models.User, currency_code:str, amount:float):
         'currency_code': currency_code,
         'amount': amount,
         'rate': rate,
-        'base': 'USD',
+        'base': base,
         'before': before,
         'after': wallet.balance,
-        'estimated_value': amount * rate,
+        'total': total,
+        'base_before': base_before,
+        'base_after': base_wallet.balance,
     }
 
 @decorators.log_action()
 def sell(user:models.User, currency_code:str, amount:float):
     '''
-    Проверить логин.
-    Валидировать входные данные.
-    Проверить, что кошелёк существует и на нём достаточно средств.
-    Уменьшить баланс.
-    Опционально: начислить эквивалент в USD (если ведёте кошелёк USD).
+    Продаёт валюту за базовую валюту из настроек и сохраняет оба баланса в портфеле
+
+    Возвращает количество, выручку, курс и балансы обоих кошельков до и после
+    При нехватке продаваемой валюты выбрасывает InsufficientFundsError
     '''
     currencies.get_currency(currency_code)
 
     if not utils.is_positive(amount):
-        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
+        raise exceptions.ValutaTradeExceptions(
+            '\'amount\' должен быть положительным числом'
+        )
+    base = settings.SettingsLoader.get('base_currency', 'USD')
+    if currency_code == base:
+        raise exceptions.ValutaTradeExceptions(
+            f'{base} используется для расчётов. Выберите другую валюту для сделки'
+        )
 
     portfolio = _load_portfolio(user)
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
     wallet.withdraw(amount)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, base)
+    total = amount * rate
+    portfolio.add_currency(base)
+    base_wallet = portfolio.get_wallet(base)
+    base_before = base_wallet.balance
+    base_wallet.deposit(total)
     _save_portfolio(portfolio)
     return {
         'currency_code': currency_code,
         'amount': amount,
         'rate': rate,
-        'base': 'USD',
+        'base': base,
         'before': before,
         'after': wallet.balance,
-        'estimated_value': amount * rate,
+        'total': total,
+        'base_before': base_before,
+        'base_after': base_wallet.balance,
     }
 
 def get_rate(from_code:str, to_code:str):
+    '''
+    Возвращает курс и ISO-время из свежего кеша либо обновляет его через Parser
+
+    Проверяет коды валют и TTL. Если свежий курс получить не удалось, выбрасывает
+    ApiRequestError
+    '''
     currencies.get_currency(from_code)
     currencies.get_currency(to_code)
     if from_code == to_code:
@@ -180,6 +204,11 @@ def get_rate(from_code:str, to_code:str):
 
 
 def show_rates(currency_code=None, top=None, base=None):
+    '''
+    Возвращает строки локального кеша с фильтрами currency_code, top и base
+
+    Top выбирает криптовалюты по стоимости в USD; сетевые запросы не выполняются
+    '''
     if not base:
         base = settings.SettingsLoader.get('base_currency', 'USD')
     currencies.get_currency(base)
@@ -197,7 +226,7 @@ def show_rates(currency_code=None, top=None, base=None):
             'Выполните \'update-rates\', чтобы загрузить данные.'
         )
 
-    # Выбрать валюты для показа.
+    # Выбрать валюты для показа
     available_codes = set()
     for pair in pairs:
         try:
@@ -217,8 +246,9 @@ def show_rates(currency_code=None, top=None, base=None):
     else:
         selected_codes = sorted(available_codes - {base})
 
-    # Для top отобрать криптовалюты и упорядочить по стоимости в USD. 
-    # "--top это N самых дорогих криптовалют по курсу к USD, фиатные валюты в выборку не входят"
+    # Для top отобрать криптовалюты и упорядочить по стоимости в USD
+    # "--top это N самых дорогих криптовалют по курсу к USD,
+    # фиатные валюты в выборку не входят"
     usd_rates = {}
     if top is not None:
         for code in selected_codes:
@@ -235,7 +265,7 @@ def show_rates(currency_code=None, top=None, base=None):
             usd_rates, key=lambda code: usd_rates[code][0], reverse=True
         )[:top]
 
-    # Пересчитать выбранные валюты в базу отображения.
+    # Пересчитать выбранные валюты в базу отображения
     rows = []
     for code in selected_codes:
         currencies.get_currency(code)
