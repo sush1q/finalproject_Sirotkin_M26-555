@@ -35,7 +35,7 @@ def _parse_options(args:list, options:dict):
     return options | result
 
 def register(args:list):
-    '''Разбирает опции регистрации и печатает результат создания пользователя.'''
+    '''Разбирает опции регистрации и печатает результат создания пользователя'''
     username = '--username'
     password = '--password'
     options = {username: None, password: None}
@@ -48,7 +48,7 @@ def register(args:list):
     )
 
 def login(args:list):
-    '''Проверяет опции входа, печатает результат и возвращает User для сессии CLI.'''
+    '''Проверяет опции входа, печатает результат и возвращает User для сессии CLI'''
     username = '--username'
     password = '--password'
     options = _parse_options(args, {username: None, password: None})
@@ -57,7 +57,7 @@ def login(args:list):
     return user
 
 def show_portfolio(args:list, user:models.User):
-    '''Печатает таблицу кошельков и общий итог в выбранной базовой валюте.'''
+    '''Печатает таблицу кошельков и общий итог в выбранной базовой валюте'''
     base_opt = '--base'
     options = _parse_options(
         args, {base_opt: settings.SettingsLoader.get('base_currency', 'USD')}
@@ -95,7 +95,7 @@ def _parse_trade_options(args: list):
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
-    '''Вызывает покупку и печатает изменение баланса и оценочную стоимость в USD.'''
+    '''Вызывает покупку и печатает изменение баланса и оценочную стоимость в USD'''
     currency, amount = _parse_trade_options(args)
     result = usecases.buy(user, currency, amount)
     code = result['currency_code']
@@ -108,7 +108,7 @@ def buy(args:list, user:models.User):
     print(f'Оценочная стоимость покупки: {result['estimated_value']:,.2f} USD')
 
 def sell(args:list, user:models.User):
-    '''Вызывает продажу и печатает изменение баланса и оценочную выручку в USD.'''
+    '''Вызывает продажу и печатает изменение баланса и оценочную выручку в USD'''
     currency, amount = _parse_trade_options(args)
     result = usecases.sell(user, currency, amount)
     code = result['currency_code']
@@ -121,7 +121,7 @@ def sell(args:list, user:models.User):
     print(f'Оценочная выручка: {result['estimated_value']:,.2f} USD')
 
 def get_rate(args:list):
-    '''Печатает прямой и обратный курсы с временем обновления.'''
+    '''Печатает прямой и обратный курсы с временем обновления'''
     from_opt = '--from'
     to_opt = '--to'
 
@@ -132,7 +132,7 @@ def get_rate(args:list):
     print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
 
 def update_rates(args:list):
-    '''Обновляет выбранные источники и печатает итог с консольными логами Parser.'''
+    '''Обновляет выбранные источники и печатает итог с консольными логами Parser'''
     source_opt = '--source'
     
     options = _parse_options(args, {source_opt: ''})
@@ -155,7 +155,7 @@ def update_rates(args:list):
         )
 
 def show_rates(args:list):
-    '''Печатает таблицу кеша с фильтрами валюты, количества криптовалют и базы.'''
+    '''Печатает таблицу кеша с фильтрами валюты, количества криптовалют и базы'''
     currency_opt = '--currency'
     top_opt = '--top'
     base_opt = '--base'
@@ -182,7 +182,7 @@ def show_rates(args:list):
 
 def execute_command(cmd: str, current_user:models.User=None):
     '''
-    Разбирает одну команду и возвращает текущего пользователя.
+    Разбирает одну команду и возвращает текущего пользователя
 
     Доменные ошибки передаются основному циклу;
     Для операций портфеля требуется вход

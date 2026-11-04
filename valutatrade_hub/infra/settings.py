@@ -5,7 +5,7 @@ from valutatrade_hub.core import exceptions
 
 
 class SettingsLoader:
-    '''Singleton загрузки и кеширования секции tool.valutatrade из pyproject.toml.'''
+    '''Singleton загрузки и кеширования секции tool.valutatrade из pyproject.toml'''
     __instance = None
     __data = None
     
@@ -17,14 +17,14 @@ class SettingsLoader:
 
     @classmethod
     def get(cls, key: str, default = ""):
-        '''Возвращает значение настройки или default; при первом вызове читает файл.'''
+        '''Возвращает значение настройки или default; при первом вызове читает файл'''
         if cls.__data is None:
             cls.reload()
         return cls.__data.get(key, default)
 
     @classmethod
     def reload(cls):
-        '''Перечитывает настройки; отсутствующий файл заменяет пустой секцией.'''
+        '''Перечитывает настройки; отсутствующий файл заменяет пустой секцией'''
         path = Path('pyproject.toml')
         try:
             with path.open('rb') as f:

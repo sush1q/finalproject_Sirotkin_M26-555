@@ -13,7 +13,7 @@ DEFAULT_RATES = {
 }
 
 def is_positive(value: float, allow_zero:bool=False):
-    '''Проверяет конечное число без bool; allow_zero разрешает ноль.'''
+    '''Проверяет конечное число без bool; allow_zero разрешает ноль'''
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
     if not math.isfinite(value):
@@ -23,7 +23,7 @@ def is_positive(value: float, allow_zero:bool=False):
     return value > 0
 
 def _find_rate(rates, from_code, to_code):
-    '''Возвращает значение курса и пары, использованные для расчёта.'''
+    '''Возвращает значение курса и пары, использованные для расчёта'''
     if from_code == to_code:
         return 1.0, ()
     from_rates = {}
@@ -37,7 +37,7 @@ def _find_rate(rates, from_code, to_code):
             ) from e
         if not is_positive(rate):
             raise exceptions.ValutaTradeExceptions(f'Некорректный курс {pair}')
-        # Прямая запись имеет приоритет перед вычисленной обратной.
+        # Прямая запись имеет приоритет перед вычисленной обратной
         for code, quotes in ((from_code, from_rates), (to_code, to_rates)):
             if original == code:
                 quotes[target] = (rate, pair)
@@ -62,10 +62,10 @@ def _find_rate(rates, from_code, to_code):
 
 def parse_rate(pairs, from_code, to_code, ttl=None):
     '''
-    Возвращает курс и время использованных записей кеша.
+    Возвращает курс и время использованных записей кеша
 
     При отсутствии или устаревании курса возвращает None; повреждённые записи
-    вызывают ошибку приложения.
+    вызывают ошибку приложения
     '''
     now = datetime.now(timezone.utc)
     if from_code == to_code:
@@ -102,7 +102,7 @@ def parse_rate(pairs, from_code, to_code, ttl=None):
 def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> float:
     '''
     Пересчитывает amount по числовым курсам
-    отсутствие пути конвертации даёт ошибку.
+    отсутствие пути конвертации даёт ошибку
     '''
     found = _find_rate(rates, from_code, to_code)
     if found is None:

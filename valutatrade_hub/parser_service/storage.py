@@ -6,12 +6,12 @@ from valutatrade_hub.parser_service.config import ParserConfig
 
 
 class RatesStorage:
-    '''Хранит снимок курсов и историю измерений с атомарной записью каждого файла.'''
+    '''Хранит снимок курсов и историю измерений с атомарной записью каждого файла'''
     def __init__(self, config=None):
         self.config = config if config is not None else ParserConfig()
 
     def _create_record(self, pair, data):
-        '''Проверить измерение и подготовить запись истории в UTC.'''
+        '''Проверить измерение и подготовить запись истории в UTC'''
         try:
             original, target = pair.split('_')
             currencies.get_currency(original)
@@ -56,12 +56,12 @@ class RatesStorage:
             ) from e
 
     def save_rates(self, pairs, last_refresh):
-        # Подготовить новые записи до изменения файлов.
+        # Подготовить новые записи до изменения файлов
         '''
-        Проверяет измерения, дополняет историю и заменяет более старые пары снимка.
+        Проверяет измерения, дополняет историю и заменяет более старые пары снимка
 
         Возвращает updated_count и last_refresh. Неверные данные и ошибки файлов
-        вызывают исключение приложения.
+        вызывают исключение приложения
         '''
         try:
             refresh = datetime.fromisoformat(last_refresh)
@@ -74,7 +74,7 @@ class RatesStorage:
         for pair, data in pairs.items():
             records.append(self._create_record(pair, data))
 
-        # Прочитать снимок и историю.
+        # Прочитать снимок и историю
         cache = load_metadata(
             self.config.RATES_FILE_PATH, {'pairs': {}, 'last_refresh': None}
         )
@@ -88,7 +88,7 @@ class RatesStorage:
         except (KeyError, TypeError) as e:
             raise exceptions.ValutaTradeExceptions('Некорректная запись истории') from e
 
-        # Добавить измерения в историю и заменить только более свежие пары.
+        # Добавить измерения в историю и заменить только более свежие пары
         updated_count = 0
         for record in records:
             if record['id'] not in known_ids:

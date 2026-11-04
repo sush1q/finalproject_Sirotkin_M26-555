@@ -9,9 +9,8 @@ AVAILABLE_DATA_TYPES = {'users', 'portfolios', 'rates'}
 
 def load_metadata(filepath, default=None):
     '''
-    Читает JSON; для отсутствующего или пустого файла возвращает default.
-
-    Нечитаемый файл или повреждённый JSON вызывают ошибку приложения.
+    Читает JSON; для отсутствующего или пустого файла возвращает default
+    Нечитаемый файл или повреждённый JSON вызывают ошибку приложения
     '''
     if default is None:
         default = {}
@@ -27,7 +26,7 @@ def load_metadata(filepath, default=None):
         ) from e
 
 def save_metadata(filepath, data):
-    '''Атомарно записывает JSON через временный файл и замену целевого файла.'''
+    '''Атомарно записывает JSON через временный файл и замену целевого файла'''
     path = Path(filepath)
     temporary_path = None
     try:
@@ -49,7 +48,7 @@ def save_metadata(filepath, data):
             temporary_path.unlink(missing_ok=True)
 
 class DatabaseManager:
-    '''Singleton доступа к JSON пользователей, портфелей и снимка курсов.'''
+    '''Singleton доступа к JSON пользователей, портфелей и снимка курсов'''
     __instance = None
 
     def __new__(cls):
@@ -58,7 +57,7 @@ class DatabaseManager:
         return cls.__instance
 
     def read_data(self, kind:str):
-        '''Читает данные указанного вида и проверяет внешнюю структуру JSON.'''
+        '''Читает данные указанного вида и проверяет внешнюю структуру JSON'''
         if kind not in AVAILABLE_DATA_TYPES:
             raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
 
@@ -84,7 +83,7 @@ class DatabaseManager:
         return result
 
     def save_data(self, kind:str, data):
-        '''Атомарно сохраняет данные указанного вида в настроенный каталог data.'''
+        '''Атомарно сохраняет данные указанного вида в настроенный каталог data'''
         if kind not in AVAILABLE_DATA_TYPES:
             raise exceptions.ValutaTradeExceptions(f'Неизвестный тип данных \'{kind}\'')
         save_metadata(

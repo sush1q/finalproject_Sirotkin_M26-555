@@ -24,9 +24,8 @@ def _save_portfolio(portfolio:models.Portfolio):
 @decorators.log_action()
 def register(username:str, password:str):
     '''
-    Создаёт User с уникальным именем и пустой портфель, сохраняет их в JSON.
-
-    Возвращает User. Занятое имя или некорректные данные вызывают ошибку приложения.
+    Создаёт User с уникальным именем и пустой портфель, сохраняет их в JSON
+    Возвращает User. Занятое имя или некорректные данные вызывают ошибку приложения
     '''
     db = database.DatabaseManager()
     users = db.read_data('users')
@@ -50,7 +49,7 @@ def register(username:str, password:str):
 
 @decorators.log_action()
 def login(username:str, password:str):
-    '''Возвращает User после проверки имени и пароля; состояние сессии не хранит.'''
+    '''Возвращает User после проверки имени и пароля; состояние сессии не хранит'''
     for data in database.DatabaseManager().read_data('users'):
         if data['username'] == username:
             user = models.User.from_dict(data)
@@ -61,9 +60,9 @@ def login(username:str, password:str):
 
 def show_portfolio(user:models.User, base:str=None):
     '''
-    Возвращает строки кошельков и итог в выбранной базе по актуальным курсам.
+    Возвращает строки кошельков и итог в выбранной базе по актуальным курсам
 
-    Для пустого портфеля возвращает пустой список и нулевой итог.
+    Для пустого портфеля возвращает пустой список и нулевой итог
     '''
     if user is None:
         raise exceptions.ValutaTradeExceptions('Пользователь не залогинен')
@@ -90,10 +89,10 @@ def show_portfolio(user:models.User, base:str=None):
 @decorators.log_action()
 def buy(user:models.User, currency_code:str, amount:float):
     '''
-    Увеличивает баланс покупаемой валюты и сохраняет портфель.
+    Увеличивает баланс покупаемой валюты и сохраняет портфель
 
     Возвращает сумму, баланс до и после, курс и оценочную стоимость в USD. Средства
-    из USD-кошелька не списываются.
+    из USD-кошелька не списываются
     '''
     currencies.get_currency(currency_code)
 
@@ -122,10 +121,10 @@ def buy(user:models.User, currency_code:str, amount:float):
 @decorators.log_action()
 def sell(user:models.User, currency_code:str, amount:float):
     '''
-    Уменьшает баланс продаваемой валюты и сохраняет портфель.
+    Уменьшает баланс продаваемой валюты и сохраняет портфель
 
     Возвращает баланс до и после, курс и оценочную выручку в USD. При нехватке
-    средств возникает InsufficientFundsError.
+    средств возникает InsufficientFundsError
     '''
     currencies.get_currency(currency_code)
 
@@ -152,10 +151,10 @@ def sell(user:models.User, currency_code:str, amount:float):
 
 def get_rate(from_code:str, to_code:str):
     '''
-    Возвращает курс и ISO-время из свежего кеша либо обновляет его через Parser.
+    Возвращает курс и ISO-время из свежего кеша либо обновляет его через Parser
 
     Проверяет коды валют и TTL. Если свежий курс получить не удалось, выбрасывает
-    ApiRequestError.
+    ApiRequestError
     '''
     currencies.get_currency(from_code)
     currencies.get_currency(to_code)
@@ -182,9 +181,9 @@ def get_rate(from_code:str, to_code:str):
 
 def show_rates(currency_code=None, top=None, base=None):
     '''
-    Возвращает строки локального кеша с фильтрами currency_code, top и base.
+    Возвращает строки локального кеша с фильтрами currency_code, top и base
 
-    Top выбирает криптовалюты по стоимости в USD; сетевые запросы не выполняются.
+    Top выбирает криптовалюты по стоимости в USD; сетевые запросы не выполняются
     '''
     if not base:
         base = settings.SettingsLoader.get('base_currency', 'USD')
@@ -203,7 +202,7 @@ def show_rates(currency_code=None, top=None, base=None):
             'Выполните \'update-rates\', чтобы загрузить данные.'
         )
 
-    # Выбрать валюты для показа.
+    # Выбрать валюты для показа
     available_codes = set()
     for pair in pairs:
         try:
@@ -223,8 +222,9 @@ def show_rates(currency_code=None, top=None, base=None):
     else:
         selected_codes = sorted(available_codes - {base})
 
-    # Для top отобрать криптовалюты и упорядочить по стоимости в USD. 
-    # "--top это N самых дорогих криптовалют по курсу к USD, фиатные валюты в выборку не входят"
+    # Для top отобрать криптовалюты и упорядочить по стоимости в USD
+    # "--top это N самых дорогих криптовалют по курсу к USD,
+    # фиатные валюты в выборку не входят"
     usd_rates = {}
     if top is not None:
         for code in selected_codes:
@@ -241,7 +241,7 @@ def show_rates(currency_code=None, top=None, base=None):
             usd_rates, key=lambda code: usd_rates[code][0], reverse=True
         )[:top]
 
-    # Пересчитать выбранные валюты в базу отображения.
+    # Пересчитать выбранные валюты в базу отображения
     rows = []
     for code in selected_codes:
         currencies.get_currency(code)

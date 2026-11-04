@@ -6,7 +6,7 @@ from valutatrade_hub.core import currencies, exceptions, utils
 
 
 class User:
-    '''Пользователь с именем, солью, хешем пароля и датой регистрации в UTC.'''
+    '''Пользователь с именем, солью, хешем пароля и датой регистрации в UTC'''
     def __init__(
         self, id:int, username:str, hashed_password:str, salt:str,
         registration_date: datetime,
@@ -35,38 +35,38 @@ class User:
 
     @property
     def id(self):
-        '''Возвращает неизменяемый идентификатор пользователя.'''
+        '''Возвращает неизменяемый идентификатор пользователя'''
         return self._user_id
 
     @property
     def username(self):
-        '''Возвращает имя пользователя.'''
+        '''Возвращает имя пользователя'''
         return self._username
 
     @username.setter
     def username(self, value):
-        '''Проверяет и задаёт непустое имя пользователя.'''
+        '''Проверяет и задаёт непустое имя пользователя'''
         if not isinstance(value, str) or not value.strip():
             raise exceptions.ValutaTradeExceptions('Имя не может быть пустым')
         self._username = value
 
     @property
     def hashed_password(self) -> str:
-        '''Возвращает сохранённый SHA-256 хеш пароля с солью.'''
+        '''Возвращает сохранённый SHA-256 хеш пароля с солью'''
         return self._hashed_password
 
     @property
     def salt(self) -> str:
-        '''Возвращает индивидуальную соль для проверки пароля.'''
+        '''Возвращает индивидуальную соль для проверки пароля'''
         return self._salt
 
     @property
     def registration_date(self):
-        '''Возвращает дату регистрации с часовым поясом UTC.'''
+        '''Возвращает дату регистрации с часовым поясом UTC'''
         return self._registration_date
 
     def get_user_info(self):
-        '''Печатает сведения о пользователе без пароля и его хеша.'''
+        '''Печатает сведения о пользователе без пароля и его хеша'''
         print(f'''
             UserID: {self._user_id};
             Username: {self._username}
@@ -74,7 +74,7 @@ class User:
             Salt: {self._salt}''')
 
     def change_password(self, new_password: str):
-        '''Проверяет длину пароля и сохраняет его хеш с новой случайной солью.'''
+        '''Проверяет длину пароля и сохраняет его хеш с новой случайной солью'''
         if not isinstance(new_password, str) or len(new_password) < 4:
             raise exceptions.ValutaTradeExceptions(
                 'Пароль должен быть не короче 4 символов'
@@ -84,7 +84,7 @@ class User:
         self._hashed_password = hashlib.sha256(password_with_salt).hexdigest()
 
     def verify_password(self, password: str):
-        '''Возвращает True, если пароль соответствует сохранённому хешу.'''
+        '''Возвращает True, если пароль соответствует сохранённому хешу'''
         if not isinstance(password, str):
             return False
         password_with_salt = (password + self.salt).encode('utf-8')
@@ -92,7 +92,7 @@ class User:
         return hashed_input == self.hashed_password
 
     def to_dict(self):
-        '''Возвращает JSON-совместимые данные пользователя с ISO-датой.'''
+        '''Возвращает JSON-совместимые данные пользователя с ISO-датой'''
         return {
             'user_id': self.id,
             'username': self.username,
@@ -105,7 +105,7 @@ class User:
     def from_dict(cls, data:dict):
         '''
         Восстанавливает пользователя из JSON-записи;
-        неверные данные вызывают ошибку.
+        неверные данные вызывают ошибку
         '''
         try:
             return cls(
@@ -122,7 +122,7 @@ class User:
 
 
 class Wallet:
-    '''Кошелёк известной валюты с конечным неотрицательным балансом.'''
+    '''Кошелёк известной валюты с конечным неотрицательным балансом'''
     def __init__(self, currency_code: str, balance: float=0.0):
         currencies.get_currency(currency_code)
         self.currency_code = currency_code
@@ -130,12 +130,12 @@ class Wallet:
 
     @property
     def balance(self):
-        '''Возвращает баланс кошелька.'''
+        '''Возвращает баланс кошелька'''
         return self._balance
 
     @balance.setter
     def balance(self, value):
-        '''Проверяет конечное неотрицательное число и сохраняет баланс.'''
+        '''Проверяет конечное неотрицательное число и сохраняет баланс'''
         if not utils.is_positive(value, allow_zero=True):
             raise exceptions.ValutaTradeExceptions(
                 'Баланс должен быть конечным неотрицательным числом'
@@ -143,7 +143,7 @@ class Wallet:
         self._balance = float(value)
 
     def deposit(self, amount: float):
-        '''Увеличивает баланс на положительную конечную сумму.'''
+        '''Увеличивает баланс на положительную конечную сумму'''
         if not utils.is_positive(amount):
             raise exceptions.ValutaTradeExceptions(
                 'Размер пополнения должен быть положительным конечным числом'
@@ -154,7 +154,7 @@ class Wallet:
     def withdraw(self, amount: float):
         '''
         Списывает положительную сумму; при нехватке средств даёт
-        InsufficientFundsError.
+        InsufficientFundsError
         '''
         if not utils.is_positive(amount):
             raise exceptions.ValutaTradeExceptions(
@@ -169,17 +169,17 @@ class Wallet:
         self.balance = new_balance
 
     def get_balance_info(self):
-        '''Печатает код валюты и текущий баланс кошелька.'''
+        '''Печатает код валюты и текущий баланс кошелька'''
         print(f'Currency code: {self.currency_code}')
         print(f'Balance: {self.balance}')
 
     def to_dict(self):
-        '''Возвращает JSON-совместимую запись баланса.'''
+        '''Возвращает JSON-совместимую запись баланса'''
         return {'balance': self.balance}
 
     @classmethod
     def from_dict(cls, currency_code:str, data:dict):
-        '''Восстанавливает кошелёк по коду валюты и JSON-записи баланса.'''
+        '''Восстанавливает кошелёк по коду валюты и JSON-записи баланса'''
         try:
             return cls(currency_code, data['balance'])
         except (KeyError, TypeError, exceptions.ValutaTradeExceptions) as e:
@@ -189,7 +189,7 @@ class Wallet:
 
 
 class Portfolio:
-    '''Набор уникальных кошельков пользователя без доступа к файлам хранилища.'''
+    '''Набор уникальных кошельков пользователя без доступа к файлам хранилища'''
     def __init__(self, user_id:int, wallets: dict[str, Wallet], user:User=None):
         self._user_id = user_id
         self._wallets = wallets.copy()
@@ -197,21 +197,21 @@ class Portfolio:
 
     @property
     def user_id(self) -> int:
-        '''Возвращает идентификатор владельца портфеля.'''
+        '''Возвращает идентификатор владельца портфеля'''
         return self._user_id
 
     @property
     def user(self):
-        '''Возвращает переданный объект User без возможности замены свойства.'''
+        '''Возвращает переданный объект User без возможности замены свойства'''
         return self._user
 
     @property
     def wallets(self):
-        '''Возвращает копию словаря, сохраняя ссылки на объекты Wallet.'''
+        '''Возвращает копию словаря, сохраняя ссылки на объекты Wallet'''
         return self._wallets.copy()
 
     def add_currency(self, currency_code: str):
-        '''Создаёт отсутствующий кошелёк; существующий баланс не изменяет.'''
+        '''Создаёт отсутствующий кошелёк; существующий баланс не изменяет'''
         currencies.get_currency(currency_code)
 
         if currency_code in self._wallets:
@@ -220,10 +220,10 @@ class Portfolio:
 
     def get_total_value(self, base_currency='USD', rates=None):
         '''
-        Возвращает стоимость портфеля в base_currency.
+        Возвращает стоимость портфеля в base_currency
 
         Использует переданный словарь числовых курсов или DEFAULT_RATES; отсутствие
-        курса вызывает ошибку.
+        курса вызывает ошибку
         '''
         currencies.get_currency(base_currency)
         if rates is None:
@@ -234,7 +234,7 @@ class Portfolio:
         )
 
     def get_wallet(self, currency_code):
-        '''Возвращает кошелёк валюты или сообщает о его отсутствии.'''
+        '''Возвращает кошелёк валюты или сообщает о его отсутствии'''
         currencies.get_currency(currency_code)
 
         if currency_code not in self._wallets:
@@ -245,7 +245,7 @@ class Portfolio:
         return self._wallets[currency_code]
 
     def to_dict(self):
-        '''Возвращает JSON-совместимые данные портфеля и его кошельков.'''
+        '''Возвращает JSON-совместимые данные портфеля и его кошельков'''
         return {
             'user_id': self.user_id,
             'wallets': {
@@ -256,7 +256,7 @@ class Portfolio:
 
     @classmethod
     def from_dict(cls, data:dict, user:User=None):
-        '''Восстанавливает портфель из JSON-записи и переданного User.'''
+        '''Восстанавливает портфель из JSON-записи и переданного User'''
         try:
             wallets = {
                 code: Wallet.from_dict(code, wallet_data)

@@ -6,17 +6,17 @@ from valutatrade_hub.parser_service import api_clients, config, storage
 
 
 class RatesUpdater:
-    '''Объединяет нормализованные курсы клиентов и передаёт их хранилищу.'''
+    '''Объединяет нормализованные курсы клиентов и передаёт их хранилищу'''
     def __init__(self, clients, storage):
         self.clients = clients
         self.storage = storage
 
     def run_update(self):
         '''
-        Обновляет курсы, продолжая работу после ошибки отдельного источника.
+        Обновляет курсы, продолжая работу после ошибки отдельного источника
 
         Возвращает updated_count, last_refresh и errors. При полном отказе
-        источников выбрасывает ApiRequestError.
+        источников выбрасывает ApiRequestError
         '''
         logger = logging_config.get_parser_logger()
         logger.info('Starting rates update...')
@@ -61,7 +61,7 @@ class RatesUpdater:
         return result
 
 def create_updater(source=None):
-    '''Создаёт updater для coingecko, exchangerate или обоих источников по умолчанию.'''
+    '''Создаёт updater для coingecko, exchangerate или обоих источников по умолчанию'''
     source = source or None
     if source not in (None, 'coingecko', 'exchangerate'):
         raise exceptions.ValutaTradeExceptions(

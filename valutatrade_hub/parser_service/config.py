@@ -6,7 +6,7 @@ from valutatrade_hub.infra import settings
 
 
 class ParserConfig:
-    '''Собирает ключи API, URL, валюты, общую базу, таймаут и пути хранилищ.'''
+    '''Собирает ключи API, URL, валюты, общую базу, таймаут и пути хранилищ'''
     COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price'
     EXCHANGERATE_API_URL = 'https://v6.exchangerate-api.com/v6'
     BASE_CURRENCY = 'USD'
