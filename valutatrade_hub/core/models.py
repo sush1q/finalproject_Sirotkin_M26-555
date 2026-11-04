@@ -20,8 +20,8 @@ class User:
         if not isinstance(registration_date, datetime):
             raise exceptions.ValutaTradeExceptions('Дата регистрации должна быть datetime')
 
-        if registration_date.tzinfo is None:
-            registration_date = registration_date.replace(tzinfo=timezone.utc)
+        if registration_date.utcoffset() is None:
+            raise exceptions.ValutaTradeExceptions('У даты регистрации должен быть указан часовой пояс')
         self._registration_date = registration_date.astimezone(timezone.utc)
 
     @property

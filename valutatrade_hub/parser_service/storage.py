@@ -41,10 +41,16 @@ class RatesStorage:
     def _is_newer(self, timestamp, previous_timestamp):
         try:
             current = datetime.fromisoformat(timestamp)
+            if current.utcoffset() is None:
+                raise ValueError('У даты курса должен быть указан часовой пояс')
+            if previous_timestamp is None:
+                return True
             previous = datetime.fromisoformat(previous_timestamp)
+            if previous.utcoffset() is None:
+                raise ValueError('У прежней даты курса должен быть указан часовой пояс')
             return current > previous
-        except (TypeError, ValueError):
-            return True
+        except (TypeError, ValueError) as e:
+            raise exceptions.ValutaTradeExceptions('Некорректная дата при сравнении курсов') from e
 
     def save_rates(self, pairs, last_refresh):
         # Подготовить новые записи до изменения файлов.
@@ -82,8 +88,10 @@ class RatesStorage:
             pair = f'{record['from_currency']}_{record['to_currency']}'
             previous = cache['pairs'].get(pair)
             previous_timestamp = None
-            if isinstance(previous, dict):
-                previous_timestamp = previous.get('updated_at')
+            if previous is not None:
+                if not isinstance(previous, dict) or not isinstance(previous.get('updated_at'), str):
+                    raise exceptions.ValutaTradeExceptions(f'Некорректная запись курса {pair}')
+                previous_timestamp = previous['updated_at']
             if self._is_newer(record['timestamp'], previous_timestamp):
                 cache['pairs'][pair] = {
                     'rate': record['rate'],

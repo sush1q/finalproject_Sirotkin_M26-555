@@ -2,7 +2,7 @@ import prompt
 import shlex
 from prettytable import PrettyTable
 from valutatrade_hub import logging_config
-from valutatrade_hub.core import usecases, models, utils, exceptions, currencies
+from valutatrade_hub.core import usecases, models, exceptions, currencies
 from valutatrade_hub.infra import settings
 from valutatrade_hub.parser_service import updater
 
@@ -74,8 +74,6 @@ def _parse_trade_options(args: list):
         amount = float(options[amount_opt])
     except (TypeError, ValueError) as e:
         raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
-    if not utils.is_positive(amount):
-        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
@@ -116,7 +114,7 @@ def update_rates(args:list):
     source_opt = '--source'
     
     options = _parse_options(args, {source_opt: ''})
-    service = updater.create_updater(options[source_opt] or None)
+    service = updater.create_updater(options[source_opt])
     with logging_config.parser_console():
         result = service.run_update()
     if result['errors']:

@@ -21,8 +21,6 @@ def log_action(verbose=True):
                 user = arguments.get('user')
                 if user is not None:
                     fields['user_id'] = user.id
-                elif 'user_id' in arguments:
-                    fields['user_id'] = arguments['user_id']
                 elif 'username' in arguments:
                     fields['username'] = arguments['username']
                 for key in ('currency_code', 'amount'):

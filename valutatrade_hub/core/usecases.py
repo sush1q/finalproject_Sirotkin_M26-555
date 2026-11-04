@@ -77,11 +77,9 @@ def show_portfolio(user:models.User, base:str=None):
         base = settings.SettingsLoader.get('base_currency', 'USD')
     currencies.get_currency(base)
     portfolio = _load_portfolio(user)
-    rates = {}
     rows = []
     for code, wallet in portfolio.wallets.items():
         rate, _ = get_rate(code, base)
-        rates[f'{code}_{base}'] = rate
         rows.append({
             'currency_code': code,
             'balance': wallet.balance,
@@ -91,7 +89,7 @@ def show_portfolio(user:models.User, base:str=None):
         'username': user.username,
         'base': base,
         'wallets': rows,
-        'total': portfolio.get_total_value(base, rates),
+        'total': sum(row['value'] for row in rows),
     }
 
 @decorators.log_action()
@@ -202,7 +200,13 @@ def show_rates(currency_code=None, top=None, base=None):
     # Выбрать валюты для показа.
     available_codes = set()
     for pair in pairs:
-        available_codes.update(pair.split('_'))
+        try:
+            original, target = pair.split('_')
+        except ValueError as e:
+            raise exceptions.ValutaTradeExceptions(
+                f'Некорректная валютная пара {pair}'
+            ) from e
+        available_codes.update((original, target))
     if currency_code:
         if currency_code not in available_codes:
             raise exceptions.ValutaTradeExceptions(
@@ -211,7 +215,7 @@ def show_rates(currency_code=None, top=None, base=None):
         currencies.get_currency(currency_code)
         selected_codes = [currency_code]
     else:
-        selected_codes = sorted(available_codes - {'USD'})
+        selected_codes = sorted(available_codes - {base})
 
     # Для top отобрать криптовалюты и упорядочить по стоимости в USD. 
     # "--top это N самых дорогих криптовалют по курсу к USD, фиатные валюты в выборку не входят"

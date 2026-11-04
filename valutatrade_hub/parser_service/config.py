@@ -1,13 +1,11 @@
 import os
 from pathlib import Path
-from dataclasses import dataclass
 
 
-from valutatrade_hub.core import currencies
+from valutatrade_hub.core import currencies, exceptions
 from valutatrade_hub.infra import settings
 
 
-@dataclass
 class ParserConfig:
     COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price'
     EXCHANGERATE_API_URL = 'https://v6.exchangerate-api.com/v6'
@@ -19,6 +17,11 @@ class ParserConfig:
     }
 
     def __init__(self):
+        self.BASE_CURRENCY = settings.SettingsLoader.get(
+            'base_currency', self.BASE_CURRENCY
+        )
+        if not isinstance(currencies.get_currency(self.BASE_CURRENCY), currencies.FiatCurrency):
+            raise exceptions.ValutaTradeExceptions('Базовая валюта Parser должна быть фиатной')
         self.EXCHANGERATE_API_KEY = os.getenv('EXCHANGERATE_API_KEY', '')
         self.COINGECKO_API_KEY = os.getenv('COINGECKO_API_KEY', '')
         self.FIAT_CURRENCIES = tuple(

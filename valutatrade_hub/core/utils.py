@@ -21,65 +21,79 @@ def is_positive(value: float, allow_zero:bool=False):
         return value >= 0
     return value > 0
 
+def _find_rate(rates, from_code, to_code):
+    '''Возвращает значение курса и пары, использованные для расчёта.'''
+    if from_code == to_code:
+        return 1.0, ()
+    from_rates = {}
+    to_rates = {}
+    for pair, rate in rates.items():
+        try:
+            original, target = pair.split('_')
+        except (AttributeError, ValueError) as e:
+            raise exceptions.ValutaTradeExceptions(f'Некорректная валютная пара {pair}') from e
+        if not is_positive(rate):
+            raise exceptions.ValutaTradeExceptions(f'Некорректный курс {pair}')
+        # Прямая запись имеет приоритет перед вычисленной обратной.
+        for code, quotes in ((from_code, from_rates), (to_code, to_rates)):
+            if original == code:
+                quotes[target] = (rate, pair)
+            elif target == code:
+                quotes.setdefault(original, (1 / rate, pair))
+
+    if to_code in from_rates:
+        rate, pair = from_rates[to_code]
+        used_pairs = (pair,)
+    else:
+        common_codes = sorted(from_rates.keys() & to_rates.keys())
+        if not common_codes:
+            return None
+        common = common_codes[0]
+        from_rate, from_pair = from_rates[common]
+        to_rate, to_pair = to_rates[common]
+        rate = from_rate / to_rate
+        used_pairs = (from_pair, to_pair)
+    if not is_positive(rate):
+        raise exceptions.ValutaTradeExceptions('Курс должен быть положительным числом')
+    return rate, used_pairs
+
 def parse_rate(pairs, from_code, to_code, ttl=None):
-    '''Находит курс в словаре пар и возвращает его вместе с датой.'''
     now = datetime.now(timezone.utc)
     if from_code == to_code:
         return 1.0, now.isoformat()
 
-    direct_pair = f'{from_code}_{to_code}'
-    reverse_pair = f'{to_code}_{from_code}'
-    for pair in (direct_pair, reverse_pair):
-        record = pairs.get(pair)
-        if not isinstance(record, dict):
-            continue
-        if not is_positive(record.get('rate')):
-            continue
+    rates = {}
+    dates = {}
+    for pair, record in pairs.items():
         try:
+            rate = record['rate']
+            if not is_positive(rate):
+                raise ValueError('Курс должен быть положительным числом')
             updated_at = datetime.fromisoformat(record['updated_at'])
-            age = (now - updated_at).total_seconds()
-        except (KeyError, TypeError, ValueError):
-            continue
+            if updated_at.utcoffset() is None:
+                raise ValueError('У даты курса должен быть указан часовой пояс')
+        except (KeyError, TypeError, ValueError) as e:
+            raise exceptions.ValutaTradeExceptions(
+                f'Некорректная запись курса {pair}: {e}'
+            ) from e
         if ttl is not None:
+            age = (now - updated_at).total_seconds()
             if age < 0 or age >= ttl:
                 continue
-        rate = record['rate']
-        if pair == reverse_pair:
-            rate = 1 / rate
-        if is_positive(rate):
-            return rate, record['updated_at']
+        rates[pair] = rate
+        dates[pair] = updated_at
 
-    # Для кросс-курса нужны стоимости обеих валют в USD.
-    if from_code == 'USD' or to_code == 'USD':
+    found = _find_rate(rates, from_code, to_code)
+    if found is None:
         return None
-    from_usd = parse_rate(pairs, from_code, 'USD', ttl)
-    to_usd = parse_rate(pairs, to_code, 'USD', ttl)
-    if from_usd is None or to_usd is None:
-        return None
-    rate = from_usd[0] / to_usd[0]
-    if not is_positive(rate):
-        return None
-    updated_at = min(from_usd[1], to_usd[1], key=datetime.fromisoformat)
-    return rate, updated_at
+    rate, used_pairs = found
+    updated_at = min(dates[pair] for pair in used_pairs)
+    return rate, updated_at.astimezone(timezone.utc).isoformat()
 
 def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> float:
-    if from_code == to_code:
-        return amount
-    direct_pair = f'{from_code}_{to_code}'
-    reverse_pair = f'{to_code}_{from_code}'
-    try:
-        if direct_pair in rates:
-            rate = rates[direct_pair]
-        elif reverse_pair in rates:
-            rate = 1 / rates[reverse_pair]
-        else:
-            from_usd = 1 if from_code == 'USD' else rates[f'{from_code}_USD']
-            to_usd = 1 if to_code == 'USD' else rates[f'{to_code}_USD']
-            rate = from_usd / to_usd
-    except (KeyError, TypeError, ZeroDivisionError) as e:
+    found = _find_rate(rates, from_code, to_code)
+    if found is None:
         raise exceptions.ValutaTradeExceptions(
             f'Не удалось получить курс для {from_code}→{to_code}'
-        ) from e
-    if not is_positive(rate):
-        raise exceptions.ValutaTradeExceptions('Курс должен быть положительным числом')
-    return amount * rate
+        )
+    return amount * found[0]
