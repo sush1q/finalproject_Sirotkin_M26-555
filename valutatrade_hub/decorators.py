@@ -6,6 +6,10 @@ from valutatrade_hub import logging_config
 
 
 def log_action(verbose=True):
+    '''
+    Логирует параметры и результат операции на уровне INFO
+    При verbose=True добавляет доступные балансы до и после операции
+    '''
     def wrapper(func):
         parameters = signature(func)
         @wraps(func)

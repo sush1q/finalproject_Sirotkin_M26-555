@@ -1,7 +1,7 @@
 import math
 from datetime import datetime, timezone
-from valutatrade_hub.core import exceptions
 
+from valutatrade_hub.core import exceptions
 
 DEFAULT_RATES = {
     'EUR_USD': 1.0786,
@@ -13,6 +13,7 @@ DEFAULT_RATES = {
 }
 
 def is_positive(value: float, allow_zero:bool=False):
+    '''Проверяет конечное число без bool; allow_zero разрешает ноль.'''
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return False
     if not math.isfinite(value):
@@ -31,7 +32,9 @@ def _find_rate(rates, from_code, to_code):
         try:
             original, target = pair.split('_')
         except (AttributeError, ValueError) as e:
-            raise exceptions.ValutaTradeExceptions(f'Некорректная валютная пара {pair}') from e
+            raise exceptions.ValutaTradeExceptions(
+                f'Некорректная валютная пара {pair}'
+            ) from e
         if not is_positive(rate):
             raise exceptions.ValutaTradeExceptions(f'Некорректный курс {pair}')
         # Прямая запись имеет приоритет перед вычисленной обратной.
@@ -58,6 +61,12 @@ def _find_rate(rates, from_code, to_code):
     return rate, used_pairs
 
 def parse_rate(pairs, from_code, to_code, ttl=None):
+    '''
+    Возвращает курс и время использованных записей кеша.
+
+    При отсутствии или устаревании курса возвращает None; повреждённые записи
+    вызывают ошибку приложения.
+    '''
     now = datetime.now(timezone.utc)
     if from_code == to_code:
         return 1.0, now.isoformat()
@@ -91,6 +100,10 @@ def parse_rate(pairs, from_code, to_code, ttl=None):
     return rate, updated_at.astimezone(timezone.utc).isoformat()
 
 def convert_amount(from_code: str, to_code: str, amount: float, rates: dict) -> float:
+    '''
+    Пересчитывает amount по числовым курсам
+    отсутствие пути конвертации даёт ошибку.
+    '''
     found = _find_rate(rates, from_code, to_code)
     if found is None:
         raise exceptions.ValutaTradeExceptions(

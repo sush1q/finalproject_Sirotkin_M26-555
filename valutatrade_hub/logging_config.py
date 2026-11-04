@@ -11,6 +11,7 @@ LOGGER_NAME = 'valutatrade.actions'
 PARSER_LOGGER_NAME = 'valutatrade.parser'
 
 def setup_logging():
+    '''Настраивает логирование с заданными форматом и ротацией'''
     config = settings.SettingsLoader()
     logger = logging.getLogger(LOGGER_NAME)
     try:
@@ -38,12 +39,14 @@ def setup_logging():
     return logger
 
 def get_logger():
+    '''Возвращает логгер, при необходимости настраивая его'''
     logger = logging.getLogger(LOGGER_NAME)
     if not logger.handlers:
         return setup_logging()
     return logger
 
 def get_parser_logger():
+    '''Возвращает файловый DEBUG-логгер использующийся для модуля парсинга'''
     logger = logging.getLogger(PARSER_LOGGER_NAME)
     if logger.handlers:
         return logger

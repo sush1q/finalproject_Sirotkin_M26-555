@@ -9,6 +9,7 @@ from valutatrade_hub.parser_service.config import ParserConfig
 
 
 class BaseApiClient(abc.ABC):
+    '''Абстрактный клиент API с общим HTTP-запросом и обработкой сетевых ошибок.'''
     source = ''
 
     def __init__(self, config=None):
@@ -16,6 +17,7 @@ class BaseApiClient(abc.ABC):
 
     @abc.abstractmethod
     def fetch_rates(self) -> dict:
+        '''Возвращает словарь FROM_TO → float либо выбрасывает ApiRequestError.'''
         pass
 
     def _hide_api_keys(self, text):
@@ -69,9 +71,11 @@ class BaseApiClient(abc.ABC):
 
 
 class CoinGeckoClient(BaseApiClient):
+    '''Клиент криптовалют CoinGecko с сопоставлением тикеров и ID монет.'''
     source = 'CoinGecko'
 
     def fetch_rates(self) -> dict:
+        '''Запрашивает криптовалюты в настроенной базе и возвращает числовые курсы.'''
         try:
             ids = [
                 self.config.CRYPTO_ID_MAP[code]
@@ -107,9 +111,11 @@ class CoinGeckoClient(BaseApiClient):
 
 
 class ExchangeRateApiClient(BaseApiClient):
+    '''Клиент фиатных курсов ExchangeRate-API с ключом из окружения.'''
     source = 'ExchangeRate-API'
 
     def fetch_rates(self) -> dict:
+        '''Читает conversion_rates и возвращает обратные пары CODE_BASE.'''
         if not self.config.EXCHANGERATE_API_KEY:
             raise exceptions.ApiRequestError(
                 f'{self.source}: задайте EXCHANGERATE_API_KEY в окружении'

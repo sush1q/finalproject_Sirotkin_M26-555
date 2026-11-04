@@ -7,6 +7,12 @@ from valutatrade_hub.parser_service.updater import create_updater
 
 
 def run(interval=None, updater=None):
+    '''
+    Периодически запускает updater с интервалом из настроек или аргумента.
+
+    Ошибки приложения записываются в лог; остановка выполняется через
+    KeyboardInterrupt.
+    '''
     if interval is None:
         interval = ParserConfig().UPDATE_INTERVAL
     if not utils.is_positive(interval):
