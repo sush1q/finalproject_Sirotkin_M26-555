@@ -76,6 +76,7 @@ def get_parser_logger():
 
 @contextmanager
 def parser_console():
+    '''Подключение логов Parser уровня INFO в консоль'''
     logger = get_parser_logger()
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)

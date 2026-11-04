@@ -111,6 +111,43 @@ CLI сообщает о недостаточном балансе, неизве�
 сумме и продолжает работу. При ошибке API предлагает повторить запрос позже.
 
 ## Структура проекта
+
+```text
+finalproject_Sirotkin_M26-555/
+├── data/                       # локальные JSON-данные, не входят в Git
+│   ├── users.json
+│   ├── portfolios.json
+│   ├── rates.json
+│   └── exchange_rates.json
+├── logs/                       # создаётся автоматически, не входит в Git
+├── valutatrade_hub/
+│   ├── core/
+│   │   ├── models.py           # User, Wallet, Portfolio и сериализация
+│   │   ├── currencies.py       # классы валют и реестр кодов
+│   │   ├── exceptions.py       # доменные исключения
+│   │   ├── usecases.py         # регистрация, вход и операции с портфелем
+│   │   └── utils.py            # проверки сумм и конвертация курсов
+│   ├── infra/
+│   │   ├── settings.py         # Singleton конфигурации
+│   │   └── database.py         # Singleton доступа к JSON и атомарная запись
+│   ├── parser_service/
+│   │   ├── config.py           # параметры API
+│   │   ├── api_clients.py      # CoinGecko и ExchangeRate-API
+│   │   ├── updater.py          # обновление и обработка частичных сбоев
+│   │   ├── storage.py          # история курсов
+│   │   └── scheduler.py        # периодический запуск обновления
+│   ├── cli/interface.py        # разбор команд, сессия и вывод
+│   ├── decorators.py           # журналирование действий
+│   └── logging_config.py       # обработчики журналов и ротация
+├── main.py
+├── pyproject.toml
+├── uv.lock
+├── Makefile
+├── demo.cast
+├── demo.gif
+└── README.md
+```
+
 Модели не читают файлы: usecases получают данные через DatabaseManager и передают
 их моделям. SettingsLoader кеширует конфигурацию. Оба класса — Singleton.
 

@@ -75,7 +75,7 @@ class CryptoCurrency(Currency):
         parent_info = super().get_display_info()
         return (
             f'[CRYPTO] {parent_info} '
-            f'(Algo: {self.algorithm}, MCAP: {self.market_cap})'
+            f'(Algo: {self.algorithm}, MCAP: {self.market_cap:.3g})'
         )
 
 
