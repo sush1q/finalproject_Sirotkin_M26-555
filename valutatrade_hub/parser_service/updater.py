@@ -75,4 +75,4 @@ def create_updater(source=None):
         clients.append(api_clients.CoinGeckoClient(conf))
     if source in (None, 'exchangerate'):
         clients.append(api_clients.ExchangeRateApiClient(conf))
-    return RatesUpdater(clients, api_clients.RatesStorage(conf))
+    return RatesUpdater(clients, storage.RatesStorage(parser_config))

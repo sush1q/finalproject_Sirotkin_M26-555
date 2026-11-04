@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from valutatrade_hub import decorators
 from valutatrade_hub.core import models, utils, exceptions, currencies
 from valutatrade_hub.infra import database, settings
+from valutatrade_hub.parser_service import updater
 
 
 def _load_portfolio(user:models.User):

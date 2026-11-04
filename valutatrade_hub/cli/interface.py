@@ -129,6 +129,28 @@ def update_rates(args:list):
             f'Update successful. Total rates updated: {result['updated_count']}. '
             f'Last refresh: {result['last_refresh']}'
         )
+
+def show_rates(args:list):
+    currency_opt = '--currency'
+    top_opt = '--top'
+    base_opt = '--base'
+    
+    options = _parse_options(args, {currency_opt: '', top_opt: '', base_opt: ''})
+    top = None
+    if options[top_opt]:
+        try:
+            top = int(options[top_opt])
+        except ValueError as e:
+            raise exceptions.ValutaTradeExceptions(
+                'top должен быть положительным целым числом'
+            ) from e
+    result = usecases.show_rates(options[currency_opt], top, options[base_opt])
+    print(f'Rates from cache (updated at {result['last_refresh']}):')
+    table = PrettyTable(['Пара', 'Курс', 'Обновлён'])
+    for row in result['rows']:
+        table.add_row([row['pair'], f'{row['rate']:.10g}', row['updated_at']])
+    print(table)
+
 def execute_command(cmd: str, current_user:models.User=None):
     try:
         args = shlex.split(cmd)
@@ -154,6 +176,8 @@ def execute_command(cmd: str, current_user:models.User=None):
             get_rate(options)
         case 'update-rates':
             update_rates(options)
+        case 'show-rates':
+            show_rates(options)
         case _:
             print(f'Команда \'{command}\' не найдена')
     return current_user

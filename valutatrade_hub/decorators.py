@@ -11,7 +11,7 @@ def log_action(verbose=True):
         @wraps(func)
         def real_wrapper(*args, **kwargs):
             logger = logging_config.get_logger()
-            timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            timestamp = datetime.now(timezone.utc).isoformat()
             fields = {
                 'timestamp': timestamp,
                 'action': func.__name__.upper(),

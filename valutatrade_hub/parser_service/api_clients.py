@@ -18,14 +18,17 @@ class BaseApiClient(abc.ABC):
     def fetch_rates(self) -> dict:
         pass
 
-    def _request(self, url, params=None, headers=None):
-        logger = logging_config.get_parser_logger()
-        safe_url = url
+    def _hide_api_keys(self, text):
         for key in (
             self.config.EXCHANGERATE_API_KEY, self.config.COINGECKO_API_KEY
         ):
             if key:
-                safe_url = safe_url.replace(key, '***')
+                text = text.replace(key, '***')
+        return text
+
+    def _request(self, url, params=None, headers=None):
+        logger = logging_config.get_parser_logger()
+        safe_url = self._hide_api_keys(url)
         logger.debug(f'GET {safe_url} params={params}')
         started = time.perf_counter()
         try:
@@ -34,12 +37,7 @@ class BaseApiClient(abc.ABC):
                 timeout=self.config.REQUEST_TIMEOUT,
             )
         except requests.exceptions.RequestException as e:
-            reason = str(e)
-            for key in (
-                self.config.EXCHANGERATE_API_KEY, self.config.COINGECKO_API_KEY
-            ):
-                if key:
-                    reason = reason.replace(key, '***')
+            reason = self._hide_api_keys(str(e))
             raise exceptions.ApiRequestError(
                 f'{self.source}: ошибка сети {type(e).__name__}: {reason}'
             ) from None
@@ -95,7 +93,11 @@ class CoinGeckoClient(BaseApiClient):
         result = {}
         for code, coin_id in zip(self.config.CRYPTO_CURRENCIES, ids):
             item = data.get(coin_id)
-            rate = item.get(base) if isinstance(item, dict) else None
+            if not isinstance(item, dict):
+                raise exceptions.ApiRequestError(
+                    f'{self.source}: отсутствуют данные {code}'
+                )
+            rate = item.get(base)
             if not utils.is_positive(rate):
                 raise exceptions.ApiRequestError(
                     f'{self.source}: некорректный или отсутствующий курс {code}'
