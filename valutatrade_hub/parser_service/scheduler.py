@@ -17,8 +17,9 @@ def run(interval=None, updater=None):
     while True:
         try:
             updater.run_update()
-        except exceptions.ApiRequestError:
-            logger.exception('Scheduled update failed')
+        except exceptions.ValutaTradeExceptions as e:
+            logger.error('Scheduled update failed: %s', e)
+            logger.debug('Scheduled failure details', exc_info=True)
         time.sleep(interval)
 
 

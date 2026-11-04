@@ -116,8 +116,9 @@ def update_rates(args:list):
     source_opt = '--source'
     
     options = _parse_options(args, {source_opt: ''})
-    service = updater.create_updater(options[source_opt])
-    result = service.run_update()
+    service = updater.create_updater(options[source_opt] or None)
+    with logging_config.parser_console():
+        result = service.run_update()
     if result['errors']:
         print(
             'Update completed with errors. Check '
@@ -144,7 +145,11 @@ def show_rates(args:list):
             raise exceptions.ValutaTradeExceptions(
                 'top должен быть положительным целым числом'
             ) from e
-    result = usecases.show_rates(options[currency_opt], top, options[base_opt])
+    result = usecases.show_rates(
+        currency_code=options[currency_opt] or None,
+        top=top,
+        base=options[base_opt] or None,
+    )
     print(f'Rates from cache (updated at {result['last_refresh']}):')
     table = PrettyTable(['Пара', 'Курс', 'Обновлён'])
     for row in result['rows']:
