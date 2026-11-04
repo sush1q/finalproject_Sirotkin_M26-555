@@ -4,6 +4,7 @@ from prettytable import PrettyTable
 from valutatrade_hub import logging_config
 from valutatrade_hub.core import usecases, models, utils, exceptions, currencies
 from valutatrade_hub.infra import settings
+from valutatrade_hub.parser_service import updater
 
 
 def _parse_options(args:list, options:dict):
@@ -111,8 +112,28 @@ def get_rate(args:list):
     print(f'Курс {original}→{target}: {rate:.8g} (обновлено: {timestamp})')
     print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
 
+def update_rates(args:list):
+    source_opt = '--source'
+    
+    options = _parse_options(args, {source_opt: ''})
+    service = updater.create_updater(options[source_opt])
+    result = service.run_update()
+    if result['errors']:
+        print(
+            'Update completed with errors. Check '
+            f'{settings.SettingsLoader.get('log_path', 'logs')}/parser.log for details.'
+        )
+        print(f'Total rates updated: {result['updated_count']}. Last refresh: {result['last_refresh']}')
+    else:
+        print(
+            f'Update successful. Total rates updated: {result['updated_count']}. '
+            f'Last refresh: {result['last_refresh']}'
+        )
 def execute_command(cmd: str, current_user:models.User=None):
-    args = shlex.split(cmd)
+    try:
+        args = shlex.split(cmd)
+    except ValueError as e:
+        raise exceptions.ValutaTradeExceptions(f'Некорректная команда: {e}') from e
     if not args:
         return current_user
     command, options = args[0], args[1:]
@@ -131,6 +152,8 @@ def execute_command(cmd: str, current_user:models.User=None):
             sell(options, current_user)
         case 'get-rate':
             get_rate(options)
+        case 'update-rates':
+            update_rates(options)
         case _:
             print(f'Команда \'{command}\' не найдена')
     return current_user
