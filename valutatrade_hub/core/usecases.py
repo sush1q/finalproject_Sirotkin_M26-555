@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from valutatrade_hub import decorators
 from valutatrade_hub.core import models, utils, exceptions, currencies
 from valutatrade_hub.infra import database, settings
+from valutatrade_hub.parser_service import updater
 
 
 def _load_portfolio(user:models.User):
@@ -76,11 +77,9 @@ def show_portfolio(user:models.User, base:str=None):
         base = settings.SettingsLoader.get('base_currency', 'USD')
     currencies.get_currency(base)
     portfolio = _load_portfolio(user)
-    rates = {}
     rows = []
     for code, wallet in portfolio.wallets.items():
         rate, _ = get_rate(code, base)
-        rates[f'{code}_{base}'] = rate
         rows.append({
             'currency_code': code,
             'balance': wallet.balance,
@@ -90,7 +89,7 @@ def show_portfolio(user:models.User, base:str=None):
         'username': user.username,
         'base': base,
         'wallets': rows,
-        'total': portfolio.get_total_value(base, rates),
+        'total': sum(row['value'] for row in rows),
     }
 
 @decorators.log_action()
@@ -159,48 +158,99 @@ def sell(user:models.User, currency_code:str, amount:float):
 def get_rate(from_code:str, to_code:str):
     currencies.get_currency(from_code)
     currencies.get_currency(to_code)
-
-    db = database.DatabaseManager()
-
-    cache = db.read_data('rates')
-
-    now = datetime.now(timezone.utc)
-    timestamp = now.isoformat().replace('+00:00', 'Z')
     if from_code == to_code:
+        timestamp = datetime.now(timezone.utc).isoformat()
         return 1.0, timestamp
+    db = database.DatabaseManager()
+    ttl = settings.SettingsLoader.get('rates_ttl_seconds', 300)
+    cache = db.read_data('rates')
+    cached = utils.parse_rate(cache['pairs'], from_code, to_code, ttl)
+    if cached is not None:
+        return cached
 
-    direct = f'{from_code}_{to_code}'
-    reverse = f'{to_code}_{from_code}'
-    for pair in (direct, reverse):
-        data = cache['pairs'].get(pair)
-        if not isinstance(data, dict) or not utils.is_positive(data.get('rate')):
-            continue
-        try:
-            updated_at = datetime.fromisoformat(data['updated_at'])
-            age = (now - updated_at).total_seconds()
-        except (KeyError, TypeError, ValueError):
-            continue
-        if 0 <= age < settings.SettingsLoader.get('rates_ttl_seconds', 300):
-            rate = data['rate'] if pair == direct else 1 / data['rate']
-            return rate, data['updated_at']
-
-    # Кросс-курс состоит из двух обычных курсов к USD.
-    if from_code != 'USD' and to_code != 'USD':
-        from_usd, from_time = get_rate(from_code, 'USD')
-        to_usd, to_time = get_rate(to_code, 'USD')
-        return from_usd / to_usd, min(from_time, to_time, key=datetime.fromisoformat)
-
-    try:
-        rate = utils.convert_amount(from_code, to_code, 1.0, utils.DEFAULT_RATES)
-    except exceptions.ValutaTradeExceptions as e:
+    result = updater.create_updater().run_update()
+    cache = db.read_data('rates')
+    cached = utils.parse_rate(cache['pairs'], from_code, to_code, ttl)
+    if cached is None:
+        reasons = '; '.join(error['message'] for error in result['errors'])
         raise exceptions.ApiRequestError(
-            f'Курс {from_code}→{to_code} недоступен: {e}'
-        ) from e
-    cache['pairs'][direct] = {
-        'rate': rate,
-        'updated_at': timestamp,
-        'source': 'Stub',
-    }
-    cache['last_refresh'] = timestamp
-    db.save_data('rates', cache)
-    return rate, timestamp
+            f'Курс {from_code}→{to_code} не получен. {reasons}'
+        )
+    return cached
+
+
+def show_rates(currency_code=None, top=None, base=None):
+    if not base:
+        base = settings.SettingsLoader.get('base_currency', 'USD')
+    currencies.get_currency(base)
+    if top is not None:
+        if isinstance(top, bool) or not isinstance(top, int) or top <= 0:
+            raise exceptions.ValutaTradeExceptions(
+                'top должен быть положительным целым числом'
+            )
+
+    cache = database.DatabaseManager().read_data('rates')
+    pairs = cache['pairs']
+    if not pairs:
+        raise exceptions.ValutaTradeExceptions(
+            'Локальный кеш курсов пуст. '
+            'Выполните \'update-rates\', чтобы загрузить данные.'
+        )
+
+    # Выбрать валюты для показа.
+    available_codes = set()
+    for pair in pairs:
+        try:
+            original, target = pair.split('_')
+        except ValueError as e:
+            raise exceptions.ValutaTradeExceptions(
+                f'Некорректная валютная пара {pair}'
+            ) from e
+        available_codes.update((original, target))
+    if currency_code:
+        if currency_code not in available_codes:
+            raise exceptions.ValutaTradeExceptions(
+                f'Курс для \'{currency_code}\' не найден в кеше.'
+            )
+        currencies.get_currency(currency_code)
+        selected_codes = [currency_code]
+    else:
+        selected_codes = sorted(available_codes - {base})
+
+    # Для top отобрать криптовалюты и упорядочить по стоимости в USD. 
+    # "--top это N самых дорогих криптовалют по курсу к USD, фиатные валюты в выборку не входят"
+    usd_rates = {}
+    if top is not None:
+        for code in selected_codes:
+            currency = currencies.get_currency(code)
+            if not isinstance(currency, currencies.CryptoCurrency):
+                continue
+            parsed = utils.parse_rate(pairs, code, 'USD')
+            if parsed is None:
+                raise exceptions.ValutaTradeExceptions(
+                    f'Для top необходим курс {code}→USD в кеше.'
+                )
+            usd_rates[code] = parsed
+        selected_codes = sorted(
+            usd_rates, key=lambda code: usd_rates[code][0], reverse=True
+        )[:top]
+
+    # Пересчитать выбранные валюты в базу отображения.
+    rows = []
+    for code in selected_codes:
+        currencies.get_currency(code)
+        if base == 'USD' and code in usd_rates:
+            parsed = usd_rates[code]
+        else:
+            parsed = utils.parse_rate(pairs, code, base)
+        if parsed is None:
+            raise exceptions.ValutaTradeExceptions(
+                f'Курс {code}→{base} отсутствует в кеше. Выполните update-rates.'
+            )
+        rate, updated_at = parsed
+        rows.append({
+            'pair': f'{code}_{base}',
+            'rate': rate,
+            'updated_at': updated_at,
+        })
+    return {'rows': rows, 'base': base, 'last_refresh': cache.get('last_refresh')}

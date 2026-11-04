@@ -11,7 +11,7 @@ def log_action(verbose=True):
         @wraps(func)
         def real_wrapper(*args, **kwargs):
             logger = logging_config.get_logger()
-            timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            timestamp = datetime.now(timezone.utc).isoformat()
             fields = {
                 'timestamp': timestamp,
                 'action': func.__name__.upper(),
@@ -21,8 +21,6 @@ def log_action(verbose=True):
                 user = arguments.get('user')
                 if user is not None:
                     fields['user_id'] = user.id
-                elif 'user_id' in arguments:
-                    fields['user_id'] = arguments['user_id']
                 elif 'username' in arguments:
                     fields['username'] = arguments['username']
                 for key in ('currency_code', 'amount'):

@@ -2,8 +2,9 @@ import prompt
 import shlex
 from prettytable import PrettyTable
 from valutatrade_hub import logging_config
-from valutatrade_hub.core import usecases, models, utils, exceptions, currencies
+from valutatrade_hub.core import usecases, models, exceptions, currencies
 from valutatrade_hub.infra import settings
+from valutatrade_hub.parser_service import updater
 
 
 def _parse_options(args:list, options:dict):
@@ -73,8 +74,6 @@ def _parse_trade_options(args: list):
         amount = float(options[amount_opt])
     except (TypeError, ValueError) as e:
         raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом') from e
-    if not utils.is_positive(amount):
-        raise exceptions.ValutaTradeExceptions('\'amount\' должен быть положительным числом')
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
@@ -111,8 +110,55 @@ def get_rate(args:list):
     print(f'Курс {original}→{target}: {rate:.8g} (обновлено: {timestamp})')
     print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
 
+def update_rates(args:list):
+    source_opt = '--source'
+    
+    options = _parse_options(args, {source_opt: ''})
+    service = updater.create_updater(options[source_opt])
+    with logging_config.parser_console():
+        result = service.run_update()
+    if result['errors']:
+        print(
+            'Update completed with errors. Check '
+            f'{settings.SettingsLoader.get('log_path', 'logs')}/parser.log for details.'
+        )
+        print(f'Total rates updated: {result['updated_count']}. Last refresh: {result['last_refresh']}')
+    else:
+        print(
+            f'Update successful. Total rates updated: {result['updated_count']}. '
+            f'Last refresh: {result['last_refresh']}'
+        )
+
+def show_rates(args:list):
+    currency_opt = '--currency'
+    top_opt = '--top'
+    base_opt = '--base'
+    
+    options = _parse_options(args, {currency_opt: '', top_opt: '', base_opt: ''})
+    top = None
+    if options[top_opt]:
+        try:
+            top = int(options[top_opt])
+        except ValueError as e:
+            raise exceptions.ValutaTradeExceptions(
+                'top должен быть положительным целым числом'
+            ) from e
+    result = usecases.show_rates(
+        currency_code=options[currency_opt] or None,
+        top=top,
+        base=options[base_opt] or None,
+    )
+    print(f'Rates from cache (updated at {result['last_refresh']}):')
+    table = PrettyTable(['Пара', 'Курс', 'Обновлён'])
+    for row in result['rows']:
+        table.add_row([row['pair'], f'{row['rate']:.10g}', row['updated_at']])
+    print(table)
+
 def execute_command(cmd: str, current_user:models.User=None):
-    args = shlex.split(cmd)
+    try:
+        args = shlex.split(cmd)
+    except ValueError as e:
+        raise exceptions.ValutaTradeExceptions(f'Некорректная команда: {e}') from e
     if not args:
         return current_user
     command, options = args[0], args[1:]
@@ -131,6 +177,10 @@ def execute_command(cmd: str, current_user:models.User=None):
             sell(options, current_user)
         case 'get-rate':
             get_rate(options)
+        case 'update-rates':
+            update_rates(options)
+        case 'show-rates':
+            show_rates(options)
         case _:
             print(f'Команда \'{command}\' не найдена')
     return current_user

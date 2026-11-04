@@ -4,7 +4,6 @@ import secrets
 from datetime import datetime, timezone
 
 from valutatrade_hub.core import utils, exceptions, currencies
-from valutatrade_hub.infra import settings
 
 
 class User:
@@ -21,8 +20,8 @@ class User:
         if not isinstance(registration_date, datetime):
             raise exceptions.ValutaTradeExceptions('Дата регистрации должна быть datetime')
 
-        if registration_date.tzinfo is None:
-            registration_date = registration_date.replace(tzinfo=timezone.utc)
+        if registration_date.utcoffset() is None:
+            raise exceptions.ValutaTradeExceptions('У даты регистрации должен быть указан часовой пояс')
         self._registration_date = registration_date.astimezone(timezone.utc)
 
     @property
@@ -68,7 +67,8 @@ class User:
         if not isinstance(new_password, str) or len(new_password) < 4:
             raise exceptions.ValutaTradeExceptions('Пароль должен быть не короче 4 символов')
         self._salt = secrets.token_hex(16)
-        self._hashed_password = hashlib.sha256((new_password + self._salt).encode(encoding='utf-8')).hexdigest()
+        password_with_salt = (new_password + self._salt).encode('utf-8')
+        self._hashed_password = hashlib.sha256(password_with_salt).hexdigest()
 
     def verify_password(self, password: str):
         '''
@@ -76,7 +76,8 @@ class User:
         '''
         if not isinstance(password, str):
             return False
-        hashed_input = hashlib.sha256((password + self.salt).encode('utf-8')).hexdigest()
+        password_with_salt = (password + self.salt).encode('utf-8')
+        hashed_input = hashlib.sha256(password_with_salt).hexdigest()
         return hashed_input == self.hashed_password
 
     def to_dict(self):
@@ -85,7 +86,7 @@ class User:
             'username': self.username,
             'hashed_password': self.hashed_password,
             'salt': self.salt,
-            'registration_date': self.registration_date.isoformat().replace('+00:00', 'Z'),
+            'registration_date': self.registration_date.isoformat(),
         }
 
     @classmethod
@@ -140,8 +141,8 @@ class Wallet:
         self.balance = new_balance
 
     def get_balance_info(self):
-        print(f'Currency code: {self.currency_code}\n'\
-            f'Balance: {self._balance}')
+        print(f'Currency code: {self.currency_code}')
+        print(f'Balance: {self.balance}')
 
     def to_dict(self):
         return {'balance': self.balance}
@@ -179,9 +180,10 @@ class Portfolio:
             return
         self._wallets[currency_code] = Wallet(currency_code, 0)
 
-    def get_total_value(self, base_currency=settings.SettingsLoader.get('base_currency', 'USD'), rates=utils.DEFAULT_RATES):
+    def get_total_value(self, base_currency='USD', rates=None):
         currencies.get_currency(base_currency)
-        
+        if rates is None:
+            rates = utils.DEFAULT_RATES
         return sum(
             utils.convert_amount(code, base_currency, wallet.balance, rates)
             for code, wallet in self._wallets.items()
