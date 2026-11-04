@@ -1,4 +1,5 @@
 import shlex
+from decimal import Decimal
 
 import prompt
 from prettytable import PrettyTable
@@ -138,8 +139,10 @@ def get_rate(args:list):
     options = _parse_options(args, {from_opt: None, to_opt: None})
     original, target = options[from_opt], options[to_opt]
     rate, timestamp = usecases.get_rate(original, target)
-    print(f'Курс {original}→{target}: {rate:.8g} (обновлено: {timestamp})')
-    print(f'Обратный курс {target}→{original}: {1 / rate:.8g}')
+    rate_text = format(Decimal(f'{rate:.8g}'), 'f')
+    inverse_text = format(Decimal(f'{1 / rate:.8g}'), 'f')
+    print(f'Курс {original}→{target}: {rate_text} (обновлено: {timestamp})')
+    print(f'Обратный курс {target}→{original}: {inverse_text}')
 
 def update_rates(args:list):
     '''Обновляет выбранные источники и печатает итог с консольными логами Parser'''
