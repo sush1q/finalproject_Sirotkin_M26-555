@@ -89,10 +89,10 @@ def show_portfolio(user:models.User, base:str=None):
 @decorators.log_action()
 def buy(user:models.User, currency_code:str, amount:float):
     '''
-    Увеличивает баланс покупаемой валюты и сохраняет портфель
+    Покупает валюту за базовую валюту из настроек и сохраняет оба баланса в портфеле
 
-    Возвращает сумму, баланс до и после, курс и оценочную стоимость в USD. Средства
-    из USD-кошелька не списываются
+    Возвращает количество, стоимость, курс и балансы обоих кошельков до и после
+    При нехватке базовой валюты выбрасывает InsufficientFundsError
     '''
     currencies.get_currency(currency_code)
 
@@ -100,9 +100,19 @@ def buy(user:models.User, currency_code:str, amount:float):
         raise exceptions.ValutaTradeExceptions(
             '\'amount\' должен быть положительным числом'
         )
+    base = settings.SettingsLoader.get('base_currency', 'USD')
+    if currency_code == base:
+        raise exceptions.ValutaTradeExceptions(
+            f'{base} используется для расчётов. Выберите другую валюту для сделки'
+        )
 
     portfolio = _load_portfolio(user)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, base)
+    total = amount * rate
+    portfolio.add_currency(base)
+    base_wallet = portfolio.get_wallet(base)
+    base_before = base_wallet.balance
+    base_wallet.withdraw(total)
     portfolio.add_currency(currency_code)
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
@@ -112,19 +122,21 @@ def buy(user:models.User, currency_code:str, amount:float):
         'currency_code': currency_code,
         'amount': amount,
         'rate': rate,
-        'base': 'USD',
+        'base': base,
         'before': before,
         'after': wallet.balance,
-        'estimated_value': amount * rate,
+        'total': total,
+        'base_before': base_before,
+        'base_after': base_wallet.balance,
     }
 
 @decorators.log_action()
 def sell(user:models.User, currency_code:str, amount:float):
     '''
-    Уменьшает баланс продаваемой валюты и сохраняет портфель
+    Продаёт валюту за базовую валюту из настроек и сохраняет оба баланса в портфеле
 
-    Возвращает баланс до и после, курс и оценочную выручку в USD. При нехватке
-    средств возникает InsufficientFundsError
+    Возвращает количество, выручку, курс и балансы обоих кошельков до и после
+    При нехватке продаваемой валюты выбрасывает InsufficientFundsError
     '''
     currencies.get_currency(currency_code)
 
@@ -132,21 +144,33 @@ def sell(user:models.User, currency_code:str, amount:float):
         raise exceptions.ValutaTradeExceptions(
             '\'amount\' должен быть положительным числом'
         )
+    base = settings.SettingsLoader.get('base_currency', 'USD')
+    if currency_code == base:
+        raise exceptions.ValutaTradeExceptions(
+            f'{base} используется для расчётов. Выберите другую валюту для сделки'
+        )
 
     portfolio = _load_portfolio(user)
     wallet = portfolio.get_wallet(currency_code)
     before = wallet.balance
     wallet.withdraw(amount)
-    rate, _ = get_rate(currency_code, 'USD')
+    rate, _ = get_rate(currency_code, base)
+    total = amount * rate
+    portfolio.add_currency(base)
+    base_wallet = portfolio.get_wallet(base)
+    base_before = base_wallet.balance
+    base_wallet.deposit(total)
     _save_portfolio(portfolio)
     return {
         'currency_code': currency_code,
         'amount': amount,
         'rate': rate,
-        'base': 'USD',
+        'base': base,
         'before': before,
         'after': wallet.balance,
-        'estimated_value': amount * rate,
+        'total': total,
+        'base_before': base_before,
+        'base_after': base_wallet.balance,
     }
 
 def get_rate(from_code:str, to_code:str):

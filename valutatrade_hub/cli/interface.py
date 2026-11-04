@@ -95,30 +95,40 @@ def _parse_trade_options(args: list):
     return (options[currency_opt], amount)
 
 def buy(args:list, user:models.User):
-    '''Вызывает покупку и печатает изменение баланса и оценочную стоимость в USD'''
+    '''Вызывает покупку и печатает изменения валютного и расчётного кошельков'''
     currency, amount = _parse_trade_options(args)
     result = usecases.buy(user, currency, amount)
     code = result['currency_code']
+    base = result['base']
     print(
         f'Покупка выполнена: {result['amount']:.8g} {code} '
-        f'по курсу {result['rate']:,.8g} USD/{code}'
+        f'по курсу {result['rate']:,.8g} {base}/{code}'
     )
     print('Изменения в портфеле:')
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
-    print(f'Оценочная стоимость покупки: {result['estimated_value']:,.2f} USD')
+    print(
+        f'- {base}: было {result['base_before']:,.2f} '
+        f'→ стало {result['base_after']:,.2f}'
+    )
+    print(f'Стоимость покупки: {result['total']:,.2f} {base}')
 
 def sell(args:list, user:models.User):
-    '''Вызывает продажу и печатает изменение баланса и оценочную выручку в USD'''
+    '''Вызывает продажу и печатает изменения валютного и расчётного кошельков'''
     currency, amount = _parse_trade_options(args)
     result = usecases.sell(user, currency, amount)
     code = result['currency_code']
+    base = result['base']
     print(
         f'Продажа выполнена: {result['amount']:.8g} {code} '
-        f'по курсу {result['rate']:,.8g} USD/{code}'
+        f'по курсу {result['rate']:,.8g} {base}/{code}'
     )
     print('Изменения в портфеле:')
     print(f'- {code}: было {result['before']:.8g} → стало {result['after']:.8g}')
-    print(f'Оценочная выручка: {result['estimated_value']:,.2f} USD')
+    print(
+        f'- {base}: было {result['base_before']:,.2f} '
+        f'→ стало {result['base_after']:,.2f}'
+    )
+    print(f'Выручка: {result['total']:,.2f} {base}')
 
 def get_rate(args:list):
     '''Печатает прямой и обратный курсы с временем обновления'''

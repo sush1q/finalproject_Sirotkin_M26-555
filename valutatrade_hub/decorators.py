@@ -42,7 +42,7 @@ def log_action(verbose=True):
             if isinstance(ret, dict):
                 keys = ('rate', 'base')
                 if verbose:
-                    keys += ('before', 'after')
+                    keys += ('before', 'after', 'base_before', 'base_after')
                 for key in keys:
                     if key in ret:
                         fields[key] = ret[key]
